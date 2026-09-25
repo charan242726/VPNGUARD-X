@@ -1,0 +1,13 @@
+classes:
+  - WEB
+  - VIDEO
+  - VOIP
+  - BULK_FILE
+  - INTERACTIVE_MESSAGING
+  - ICMP_CONTROL
+  - UNKNOWN
+unknown_handling:
+  method: "validation-quantile max-softmax baseline"
+  target_id_rejection_rate: 0.05
+  required_ood_tests: [unseen_application, corrupted_capture, non_ipsec_encrypted_traffic]
+  note: "Threshold and empirical FPR95/AUROC are TBD — requires experiment."

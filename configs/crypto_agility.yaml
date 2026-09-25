@@ -1,0 +1,21 @@
+module_version: "0.1.0"
+enabled_by_default: false
+core_novelty: false
+standards:
+  - source: RFC9370
+    sections: "2-3"
+    purpose: "IKEv2 multiple successive key exchanges"
+  - source: STRONGSWAN_DOCUMENTATION_6_1
+    locator: "IKEv2 proposal and post-quantum cryptography documentation"
+    purpose: "keX_ proposal syntax and implementation support"
+passive_contract:
+  visible: [exchange_type, message_id, direction, timing, length]
+  protected_or_unavailable: [additional_ke_algorithm, kem_identity, shared_secret, hybrid_security_strength]
+  prohibited_inference: "Do not identify ML-KEM or another KEM from packet length alone."
+pilot:
+  scenario_id: VGX-I2-V4-TUN-GCM19-NATIVE-MKE
+  enabled: false
+  enable_when:
+    - both endpoint providers/plugins are version-locked
+    - negotiated algorithms are confirmed by authorized VICI telemetry
+    - negative and fallback interoperability cases are defined

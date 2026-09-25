@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools==75.6.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vpnguard-x"
+version = "0.3.0"
+description = "Evidence-bounded and constraint-guided IPsec VPN security assurance"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = {text = "Apache-2.0"}
+authors = [{name = "VPNGUARD-X SIH 26160 Team"}]
+dependencies = ["PyYAML==6.0.3"]
+
+[project.optional-dependencies]
+ml = [
+  "numpy==2.2.1",
+  "pandas==2.2.3",
+  "scikit-learn==1.6.0",
+  "xgboost==3.4.1",
+  "torch==2.5.1"
+]
+service = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+  "python-multipart==0.0.20"
+]
+dashboard = ["streamlit==1.41.1", "pandas==2.2.3"]
+dev = ["pytest==8.3.4", "ruff==0.8.6", "jsonschema==4.23.0"]
+all = [
+  "numpy==2.2.1",
+  "pandas==2.2.3",
+  "scikit-learn==1.6.0",
+  "xgboost==3.4.1",
+  "torch==2.5.1",
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.34.0",
+  "python-multipart==0.0.20",
+  "streamlit==1.41.1",
+  "pytest==8.3.4",
+  "ruff==0.8.6",
+  "jsonschema==4.23.0"
+]
+
+[project.scripts]
+vpnguardx = "vpnguardx:main"
+
+[tool.setuptools]
+py-modules = ["pipeline", "vpnguardx"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+  "api*", "calibration*", "cgii*", "common*", "configs*", "crypto_agility*", "cyber_range*", "data*",
+  "dashboard*", "deployment*", "experiments*", "features*", "models*", "observability*", "parser*",
+  "policy*", "remediation*", "reports*", "risk*"
+]
+
+[tool.setuptools.package-data]
+configs = ["*.yaml"]
+data = ["*.csv"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 140
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]

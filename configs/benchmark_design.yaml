@@ -1,0 +1,56 @@
+benchmark_version: "0.2.0"
+description: "Balanced configuration-by-application benchmark for VPNGUARD-X"
+seeds: [11, 22, 33, 44, 55]
+sessions_per_seed: 1
+
+# These are configuration templates only.  The planner replaces their original
+# traffic labels with every declared in-domain profile, preventing configuration
+# and application labels from being accidentally confounded.
+strongswan_configuration_templates:
+  - VGX-I2-V4-TUN-GCM19-NATIVE-WEB
+  - VGX-I2-V4-TUN-GCM19-NATT-WEB
+  - VGX-I2-V6-TUN-GCM19-NATIVE-WEB
+  - VGX-I2-V6-TUN-GCM19-UDP-WEB
+  - VGX-I2-V4-TRN-GCM19-NATIVE-CTRL
+  - VGX-I2-V6-TRN-GCM19-NATIVE-CTRL
+  - VGX-I2-V4-TUN-CBC14-NATIVE-BULK
+  - VGX-I2-V4-TUN-CBC14-NATT-BULK
+  - VGX-I2-V6-TUN-CBC14-NATIVE-BULK
+  - VGX-I2-V4-TUN-CHACHA31-NATIVE-VIDEO
+  - VGX-I2-V4-TUN-CHACHA31-NATT-VIDEO
+  - VGX-I2-V6-TUN-CHACHA31-NATIVE-VOIP
+  - VGX-I2-V4-TUN-GCM20-NATIVE-CHAT
+  - VGX-I2-V4-TUN-GCM20-NATT-CHAT
+  - VGX-I2-V4-TUN-GCM19-NATIVE-NOPFS
+  - VGX-I2-V4-TUN-CBC14-NATIVE-NOPFS
+  - VGX-I2-V4-TRN-CBC14-NATIVE-CHAT
+  - VGX-I2-V4-TRN-CHACHA31-NATIVE-VOIP
+
+# The initial interoperability pilot deliberately uses the most conservative
+# common subset.  Add a template only after a one-seed pilot succeeds and its
+# selected SA state is confirmed at both endpoints.
+libreswan_interop_templates:
+  - VGX-I2-V4-TUN-GCM19-NATIVE-WEB
+  - VGX-I2-V4-TUN-CBC14-NATIVE-BULK
+
+in_domain_traffic:
+  - {application_class: WEB, application_profile: https_seeded}
+  - {application_class: VIDEO, application_profile: udp_video_seeded}
+  - {application_class: VOIP, application_profile: udp_voip_seeded}
+  - {application_class: BULK_FILE, application_profile: tcp_bulk_seeded}
+  - {application_class: INTERACTIVE_MESSAGING, application_profile: interactive_seeded}
+  - {application_class: ICMP_CONTROL, application_profile: icmp_seeded}
+
+# These profiles are never used as ordinary application-class training labels.
+# They are evaluated as UNKNOWN/OOD and must remain distinct in the record.
+ood_traffic:
+  - {application_class: UNKNOWN, application_profile: dns_burst_seeded}
+  - {application_class: UNKNOWN, application_profile: iot_telemetry_seeded}
+  - {application_class: UNKNOWN, application_profile: mixed_unknown_seeded}
+
+pilot:
+  templates_per_stack: 2
+  seeds: [11]
+  include_ood: true
+
+result_policy: "No metric may be reported until the corresponding manifest and prediction records exist; otherwise use TBD — requires experiment."

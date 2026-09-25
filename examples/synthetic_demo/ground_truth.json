@@ -1,0 +1,33 @@
+{
+  "schema_version": "0.1.0-synthetic-fixture",
+  "fixture_kind": "SYNTHETIC_PROTOCOL_UNIT_FIXTURE_NOT_EMPIRICAL_DATA",
+  "generator": "tests.fixtures.write_synthetic_pcap",
+  "capture": {
+    "pcap_file": "synthetic_ikev2_esp.pcap",
+    "sha256": "c2e9259e23dbc1109d340763214252063ae32576ce9c19e2232d0e2d8521baed",
+    "packet_count": 4
+  },
+  "expected_visible_facts": {
+    "ike.version": "IKEV2",
+    "ike.selected_encryption": "ENCR_AES_CBC_256",
+    "ike.selected_integrity": "AUTH_HMAC_SHA2_256_128",
+    "ike.selected_prf": "PRF_HMAC_SHA2_256",
+    "ike.initial_ke_group": 14,
+    "encapsulation": "NATIVE_ESP",
+    "esp.spi": "0xaabbccdd",
+    "esp.sequence_low32": [1, 3]
+  },
+  "expected_unobservable_examples": [
+    "child.mode",
+    "child.encryption",
+    "child.integrity",
+    "child.pfs_group",
+    "child.esn",
+    "child.anti_replay_enabled",
+    "sa.configured_lifetime",
+    "ike.peer_identity"
+  ],
+  "empirical_result": false,
+  "contains_real_network_traffic": false,
+  "contains_secrets_or_key_material": false
+}

@@ -1,0 +1,74 @@
+{
+  "name": "vpnguardx-desktop",
+  "version": "1.0.0",
+  "description": "Evidence-bounded IPsec VPN security assurance desktop console",
+  "author": "VPNGUARD-X SIH 26160 Team",
+  "homepage": "https://github.com/VPNGUARD-X/VPNGUARD-X",
+  "main": "main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
+    "build": "vite build && electron-builder",
+    "dist:deb": "vite build && electron-builder --linux deb",
+    "dist:appimage": "vite build && electron-builder --linux AppImage"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "dependencies": {
+    "framer-motion": "^13.4.2",
+    "lucide-react": "^1.48.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.8.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "wait-on": "^9.1.0"
+  },
+  "build": {
+    "appId": "org.vpnguardx.desktop",
+    "productName": "VPNGUARD-X",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "../vpnguardx.py", "to": "backend/vpnguardx.py" },
+      { "from": "../pipeline.py", "to": "backend/pipeline.py" },
+      { "from": "../calibration", "to": "backend/calibration", "filter": ["**/*.py"] },
+      { "from": "../cgii", "to": "backend/cgii", "filter": ["**/*.py"] },
+      { "from": "../common", "to": "backend/common", "filter": ["**/*.py"] },
+      { "from": "../configs", "to": "backend/configs", "filter": ["**/*.yaml"] },
+      { "from": "../crypto_agility", "to": "backend/crypto_agility", "filter": ["**/*.py"] },
+      { "from": "../deployment", "to": "backend/deployment", "filter": ["**/*.py"] },
+      { "from": "../features", "to": "backend/features", "filter": ["**/*.py"] },
+      { "from": "../models", "to": "backend/models", "filter": ["**/*.py"] },
+      { "from": "../observability", "to": "backend/observability", "filter": ["**/*.py"] },
+      { "from": "../parser", "to": "backend/parser", "filter": ["**/*.py"] },
+      { "from": "../policy", "to": "backend/policy", "filter": ["**/*.py"] },
+      { "from": "../remediation", "to": "backend/remediation", "filter": ["**/*.py"] },
+      { "from": "../reports", "to": "backend/reports", "filter": ["**/*.py"] },
+      { "from": "../risk", "to": "backend/risk", "filter": ["**/*.py"] },
+      { "from": "../artifacts/deployment_bundle", "to": "backend/artifacts/deployment_bundle" }
+    ],
+    "linux": {
+      "target": ["deb", "AppImage"],
+      "category": "Network",
+      "maintainer": "VPNGUARD-X SIH 26160 Team"
+    },
+    "deb": {
+      "synopsis": "IPsec VPN protocol analyzer and security assessment console",
+      "depends": ["python3 (>= 3.12)", "tcpdump"]
+    }
+  }
+}

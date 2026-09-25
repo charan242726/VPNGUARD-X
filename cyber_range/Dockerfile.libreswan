@@ -1,0 +1,28 @@
+ARG BASE_IMAGE=fedora:43
+FROM ${BASE_IMAGE}
+
+# Release commit for Libreswan 5.4 (2026-08-13).  A frozen paper run must also
+# pin BASE_IMAGE by digest; the batch manifest records the resolved image.
+ARG LIBRESWAN_COMMIT=5eb03b7772b312e705feab9ad5868678a3c007e6
+
+RUN dnf -y install dnf-plugins-core git make gcc rpm-build \
+    iproute iptables iputils tcpdump python3 procps-ng tini \
+    && git clone https://github.com/libreswan/libreswan.git /tmp/libreswan \
+    && cd /tmp/libreswan \
+    && git checkout "${LIBRESWAN_COMMIT}" \
+    && test "$(git rev-parse HEAD)" = "${LIBRESWAN_COMMIT}" \
+    && dnf -y builddep packaging/fedora/libreswan.spec \
+    && make -j2 base \
+    && make install-base \
+    && cd / \
+    && rm -rf /tmp/libreswan /var/cache/dnf
+
+COPY cyber_range/entrypoint_libreswan.sh /usr/local/bin/vgx-libreswan-entrypoint
+COPY cyber_range/traffic.py /opt/vgx/traffic.py
+COPY cyber_range/traffic_server.py /opt/vgx/traffic_server.py
+
+RUN chmod 0755 /usr/local/bin/vgx-libreswan-entrypoint /opt/vgx/traffic.py /opt/vgx/traffic_server.py \
+    && mkdir -p /run/pluto /var/lib/ipsec/nss /scenario
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/vgx-libreswan-entrypoint"]
+CMD ["sleep", "infinity"]

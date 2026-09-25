@@ -1,0 +1,71 @@
+services:
+  left:
+    build:
+      context: ..
+      dockerfile: cyber_range/Dockerfile
+    cap_add: [NET_ADMIN]
+    environment:
+      VGX_ROLE: gateway
+    volumes:
+      - ${VGX_RUN_DIR}/left/swanctl.conf:/etc/swanctl/swanctl.conf:ro
+      - ${VGX_RUN_DIR}:/scenario
+    networks:
+      transit:
+        ipv4_address: 10.80.0.10
+      left_lan:
+        ipv4_address: 10.11.0.1
+  right:
+    build:
+      context: ..
+      dockerfile: cyber_range/Dockerfile.libreswan
+    cap_add: [NET_ADMIN]
+    environment:
+      VGX_ROLE: libreswan_gateway
+    volumes:
+      - ${VGX_RUN_DIR}/right/ipsec.conf:/etc/ipsec.conf:ro
+      - ${VGX_RUN_DIR}/right/ipsec.secrets:/etc/ipsec.secrets:ro
+      - ${VGX_RUN_DIR}:/scenario
+    networks:
+      transit:
+        ipv4_address: 10.80.0.20
+      right_lan:
+        ipv4_address: 10.22.0.1
+  left_client:
+    build:
+      context: ..
+      dockerfile: cyber_range/Dockerfile
+    cap_add: [NET_ADMIN]
+    environment:
+      VGX_ROLE: left_client
+    command: ["sleep", "infinity"]
+    networks:
+      left_lan:
+        ipv4_address: 10.11.0.20
+  right_server:
+    build:
+      context: ..
+      dockerfile: cyber_range/Dockerfile.libreswan
+    cap_add: [NET_ADMIN]
+    environment:
+      VGX_ROLE: right_server
+    command: ["python3", "/opt/vgx/traffic_server.py"]
+    networks:
+      right_lan:
+        ipv4_address: 10.22.0.20
+
+networks:
+  transit:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.80.0.0/24
+  left_lan:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.11.0.0/24
+  right_lan:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.22.0.0/24

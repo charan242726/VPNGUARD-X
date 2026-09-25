@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vpnguard-x.invalid/schemas/ground_truth-0.1.0.json",
+  "title": "VPNGUARD-X cyber-range ground truth",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "scenario_id",
+    "scenario_manifest_hash",
+    "seed",
+    "outcome",
+    "application",
+    "configured_properties",
+    "observed_properties",
+    "capture",
+    "secrets_or_session_keys_in_record"
+  ],
+  "properties": {
+    "schema_version": {"enum": ["0.1.0", "0.2.0"]},
+    "scenario_id": {"type": "string", "pattern": "^[A-Z0-9_-]+$"},
+    "scenario_manifest_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_scenario_id": {"type": ["string", "null"]},
+    "stack": {"type": "string"},
+    "seed": {"type": "integer"},
+    "outcome": {"enum": ["COMPLETED", "FAILED"]},
+    "failure_reason": {"type": ["string", "null"]},
+    "application": {
+      "type": "object",
+      "required": ["label", "profile", "generator"]
+    },
+    "configured_properties": {"type": "object"},
+    "observed_properties": {"type": "object"},
+    "telemetry": {"type": "object"},
+    "capture": {
+      "type": "object",
+      "required": ["pcap_file", "sha256", "size_bytes", "capture_point", "capture_variant"],
+      "properties": {
+        "pcap_file": {"type": "string", "pattern": "^[^/]+\\.pcap$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 24}
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "required": ["root_artifact_id", "source_artifact_id", "source_pcap_sha256", "transformation"],
+      "properties": {
+        "root_artifact_id": {"type": "string"},
+        "source_artifact_id": {"type": "string"},
+        "source_pcap_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "transformation": {"type": "string"}
+      }
+    },
+    "secrets_or_session_keys_in_record": {"const": false}
+  },
+  "additionalProperties": true
+}

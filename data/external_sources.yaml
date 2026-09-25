@@ -1,0 +1,18 @@
+external_dataset_sources:
+  - id: ISCXVPN2016
+    official_url: "https://www.unb.ca/cic/datasets/vpn.html"
+    required: false
+    intended_use: "Independent application-traffic distribution-shift check only"
+    prohibited_claims:
+      - "IPsec configuration inference ground truth"
+      - "CHILD-SA transform, PFS, mode, lifetime, ESN, or anti-replay accuracy"
+    local_archive_sha256: "TBD — record only after an authorized download"
+    license_or_terms_review: "TBD — review before redistribution"
+
+primary_dataset:
+  id: VPNGUARD_X_CONTROLLED_RANGE
+  required: true
+  generated_by: "experiments/plan_benchmark.py + cyber_range/batch.py"
+  public_target_interaction: false
+  ground_truth_required_per_pcap: true
+  result_status: "TBD — requires cyber-range execution"

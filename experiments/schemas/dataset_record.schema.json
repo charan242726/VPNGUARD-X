@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vpnguard-x.invalid/schemas/dataset-record-0.2.0.json",
+  "title": "VPNGUARD-X model-ready dataset record",
+  "type": "object",
+  "required": [
+    "artifact_id", "pcap_sha256", "scenario_id", "seed",
+    "configuration_id", "application_class", "application_profile",
+    "capture_variant", "packet_loss_fraction", "replicate_group", "stack",
+    "flow_feature_names", "flow_features", "sequence_values", "sequence_mask",
+    "hard_evidence", "protocol_truth", "protocol_predicted"
+  ],
+  "properties": {
+    "artifact_id": {"type": "string", "minLength": 16},
+    "pcap_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scenario_id": {"type": "string"},
+    "seed": {"type": "integer"},
+    "configuration_id": {"type": ["string", "null"]},
+    "application_class": {"type": "string"},
+    "application_profile": {"type": "string"},
+    "capture_variant": {"type": "string"},
+    "packet_loss_fraction": {"type": "number", "minimum": 0, "maximum": 0.5},
+    "source_artifact_id": {"type": ["string", "null"]},
+    "replicate_group": {"type": "string"},
+    "stack": {"type": "string"},
+    "flow_feature_names": {"type": "array", "items": {"type": "string"}},
+    "flow_features": {"type": "array", "items": {"type": "number"}},
+    "sequence_values": {"type": "array"},
+    "sequence_mask": {"type": "array", "items": {"type": "integer", "enum": [0, 1]}},
+    "hard_evidence": {"type": "array"},
+    "protocol_truth": {"type": "object"},
+    "protocol_predicted": {"type": "object"}
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,20 @@
+{
+  "conformal": {
+    "alpha": 0.1,
+    "calibrator_hash": "38e0b68c429fb42c05dac70926ada6f996b015f013f8cccb90045339345e34ed",
+    "calibrator_id": "SPLIT_CONFORMAL_1_MINUS_P_TRUE",
+    "sample_count": 96,
+    "threshold": 0.22537974969964203
+  },
+  "open_world_gate": {
+    "calibration_count": 48,
+    "gate_hash": "3e07ea25436f3c946bd0666796ffff72f46b7221f839181e49ee581dd5c69f75",
+    "target_id_rejection_rate": 0.05,
+    "threshold": 1.0
+  },
+  "temperature": {
+    "calibration_count": 48,
+    "calibrator_hash": "d7c80cd67f0b7fedb3f73cf32a50d5d734c4151d03c9b7eedeacebf48700480b",
+    "temperature": 0.05000000000000001
+  }
+}

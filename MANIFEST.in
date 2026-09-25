@@ -1,0 +1,9 @@
+include README.md LICENSE SECURITY.md CONTRIBUTING.md Makefile .python-version
+recursive-include configs *.yaml
+recursive-include data *.csv
+recursive-include docs *.md *.svg *.jpeg
+recursive-include cyber_range *.py *.sh *.yaml Dockerfile *.json *.md
+recursive-include examples *.md *.json *.pcap
+recursive-include requirements *.lock *.md
+recursive-include scripts *.py
+recursive-include tests *.py

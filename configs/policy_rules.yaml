@@ -1,0 +1,248 @@
+rulebook_version: "0.1.0"
+semantic_cutoff: "2026-09-13"
+profiles:
+  ietf_baseline:
+    description: "IETF deprecation and protocol-consistency deployment baseline"
+  nist_800_77r1:
+    description: "NIST SP 800-77 Rev. 1 deployment profile plus IETF deprecations"
+rules:
+  - rule_id: IETF-IKEV1-001
+    profiles: [ietf_baseline, nist_800_77r1]
+    enabled: true
+    field: ike_version
+    operator: equals
+    value: IKEV1
+    severity: HIGH
+    weight: 8.0
+    source_id: RFC9395
+    source_section: "Abstract and Section 3"
+    normative_level: DEPRECATED_HISTORIC
+    rationale: "RFC 9395 deprecates IKEv1 and moves the associated RFCs to Historic status."
+    remediation: "Migrate the connection and peer interoperability profile to IKEv2."
+    observability_requirement: "IKE header version or authorized endpoint telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: IETF-IKE-ENC-001
+    profiles: [ietf_baseline, nist_800_77r1]
+    enabled: true
+    field: ike_encryption
+    operator: in
+    value: [ENCR_DES, ENCR_NULL]
+    severity: CRITICAL
+    weight: 10.0
+    source_id: RFC8247
+    source_section: "Section 2.1"
+    normative_level: MUST_NOT
+    rationale: "The IKEv2 algorithm guidance marks DES and NULL encryption as MUST NOT."
+    remediation: "Select an approved AES-based IKE encryption proposal supported by both peers."
+    observability_requirement: "Responder IKE_SA_INIT selection or authorized endpoint telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: IETF-IKE-PRF-001
+    profiles: [ietf_baseline, nist_800_77r1]
+    enabled: true
+    field: ike_prf
+    operator: equals
+    value: PRF_HMAC_MD5
+    severity: CRITICAL
+    weight: 10.0
+    source_id: RFC8247
+    source_section: "Section 2.2, as updated by RFC 9395"
+    normative_level: MUST_NOT_DEPRECATED
+    rationale: "HMAC-MD5 as an IKE PRF is obsolete and prohibited by the cited algorithm guidance."
+    remediation: "Use an interoperable SHA-2 PRF, such as PRF_HMAC_SHA2_256 or stronger as policy requires."
+    observability_requirement: "Responder IKE_SA_INIT selection or authorized endpoint telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: IETF-IKE-INTEG-001
+    profiles: [ietf_baseline, nist_800_77r1]
+    enabled: true
+    field: ike_integrity
+    operator: in
+    value: [AUTH_HMAC_MD5_96]
+    severity: CRITICAL
+    weight: 10.0
+    source_id: RFC8247
+    source_section: "Section 2.3, as updated by RFC 9395 Section 5"
+    normative_level: MUST_NOT_DEPRECATED
+    rationale: "MD5-based integrity transforms are obsolete and prohibited/deprecated by the cited guidance."
+    remediation: "Use AEAD or a SHA-2 integrity transform compatible with the selected IKE encryption."
+    observability_requirement: "Responder IKE_SA_INIT selection or authorized endpoint telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: IETF-KE-001
+    profiles: [ietf_baseline, nist_800_77r1]
+    enabled: true
+    field: ike_ke_group
+    operator: in
+    value: [1, 22]
+    severity: CRITICAL
+    weight: 10.0
+    source_id: RFC8247
+    source_section: "Section 2.4, as updated by RFC 9395 Section 5"
+    normative_level: MUST_NOT_DEPRECATED
+    rationale: "The cited IKE guidance prohibits or deprecates these weak key-exchange groups."
+    remediation: "Configure a policy-approved modern group and verify peer support."
+    observability_requirement: "IKE_SA_INIT KE payload/selection or authorized telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: IETF-KE-002
+    profiles: [ietf_baseline, nist_800_77r1]
+    enabled: true
+    field: ike_ke_group
+    operator: in
+    value: [2, 5, 23, 24]
+    severity: HIGH
+    weight: 7.0
+    source_id: RFC8247
+    source_section: "Section 2.4"
+    normative_level: SHOULD_NOT
+    rationale: "The cited IKE guidance marks these key-exchange groups SHOULD NOT."
+    remediation: "Move to an approved group such as a policy-accepted MODP or elliptic-curve group."
+    observability_requirement: "IKE_SA_INIT KE payload/selection or authorized telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: IETF-ESP-3DES-001
+    profiles: [ietf_baseline, nist_800_77r1]
+    enabled: true
+    field: child_encryption
+    operator: equals
+    value: ENCR_3DES
+    severity: HIGH
+    weight: 7.0
+    source_id: RFC8221
+    source_section: "Section 5"
+    normative_level: SHOULD_NOT
+    rationale: "RFC 8221 marks 3DES for ESP as SHOULD NOT."
+    remediation: "Replace ESP 3DES with a policy-approved AES AEAD or AES plus SHA-2 suite."
+    observability_requirement: "Authorized CHILD-SA telemetry or candidate inference; passive ESP header alone is insufficient"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: NIST-ALG-CHILD-001
+    profiles: [nist_800_77r1]
+    enabled: true
+    field: child_encryption
+    operator: not_in
+    value: [ENCR_AES_GCM_16_128, ENCR_AES_GCM_16_256, ENCR_AES_CBC_128, ENCR_AES_CBC_256, ENCR_AES_CTR_128, ENCR_AES_CTR_256]
+    severity: HIGH
+    weight: 8.0
+    source_id: NIST80077R1
+    source_section: "Executive Summary and Section 4.1.4"
+    normative_level: NIST_PROFILE
+    rationale: "This versioned profile restricts CHILD-SA encryption to its documented NIST-approved AES allow-list."
+    remediation: "Select a listed AES suite and an approved implementation/module for the deployment context."
+    observability_requirement: "Authorized CHILD-SA telemetry or calibrated candidate set"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: NIST-ALG-IKE-001
+    profiles: [nist_800_77r1]
+    enabled: true
+    field: ike_encryption
+    operator: not_in
+    value: [ENCR_AES_GCM_16_128, ENCR_AES_GCM_16_256, ENCR_AES_CBC_128, ENCR_AES_CBC_256, ENCR_AES_CTR_128, ENCR_AES_CTR_256]
+    severity: HIGH
+    weight: 8.0
+    source_id: NIST80077R1
+    source_section: "Executive Summary and Section 4.1.4"
+    normative_level: NIST_PROFILE
+    rationale: "This versioned profile restricts IKE encryption to its documented NIST-approved AES allow-list."
+    remediation: "Select a listed AES IKE suite implemented by an approved module for the deployment context."
+    observability_requirement: "Responder IKE_SA_INIT selection or authorized endpoint telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: NIST-PRF-001
+    profiles: [nist_800_77r1]
+    enabled: true
+    field: ike_prf
+    operator: not_in
+    value: [PRF_HMAC_SHA2_256, PRF_HMAC_SHA2_384, PRF_HMAC_SHA2_512]
+    severity: HIGH
+    weight: 7.0
+    source_id: NIST80077R1
+    source_section: "Section 4.1.4 and Section 7.2.6"
+    normative_level: NIST_PROFILE
+    rationale: "The versioned profile requires a SHA-2 PRF rather than legacy MD5/SHA-1 choices."
+    remediation: "Configure a mutually supported SHA-2 IKE PRF in the organizational proposal."
+    observability_requirement: "Responder IKE_SA_INIT selection or authorized endpoint telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: NIST-INTEG-IKE-001
+    profiles: [nist_800_77r1]
+    enabled: true
+    field: ike_integrity
+    operator: not_in
+    value: [AUTH_NONE, AUTH_HMAC_SHA2_256_128, AUTH_HMAC_SHA2_384_192, AUTH_HMAC_SHA2_512_256]
+    severity: HIGH
+    weight: 7.0
+    source_id: NIST80077R1
+    source_section: "Section 4.1.4"
+    normative_level: NIST_PROFILE
+    rationale: "The versioned profile permits no separate integrity transform for AEAD or a listed SHA-2 integrity transform for non-AEAD IKE."
+    remediation: "Use AEAD or a listed SHA-2 integrity algorithm consistently with the IKE encryption transform."
+    observability_requirement: "Responder IKE_SA_INIT selection or authorized endpoint telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: NIST-INTEG-CHILD-001
+    profiles: [nist_800_77r1]
+    enabled: true
+    field: child_integrity
+    operator: not_in
+    value: [AUTH_NONE, AUTH_HMAC_SHA2_256_128, AUTH_HMAC_SHA2_384_192, AUTH_HMAC_SHA2_512_256]
+    severity: HIGH
+    weight: 7.0
+    source_id: NIST80077R1
+    source_section: "Section 4.1.4"
+    normative_level: NIST_PROFILE
+    rationale: "The versioned profile permits no separate integrity transform for AEAD or a listed SHA-2 transform for non-AEAD ESP."
+    remediation: "Use an approved AEAD suite or pair non-AEAD ESP encryption with a listed SHA-2 integrity transform."
+    observability_requirement: "Authorized CHILD-SA telemetry or calibrated candidate set"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: NIST-KE-001
+    profiles: [nist_800_77r1]
+    enabled: true
+    field: ike_ke_group
+    operator: not_in
+    value: [14, 15, 16, 17, 18, 19, 20, 21]
+    severity: HIGH
+    weight: 8.0
+    source_id: NIST80077R1
+    source_section: "Section 7.2.6"
+    normative_level: NIST_PROFILE
+    rationale: "The cited NIST guidance lists groups 14 through 21 for this profile."
+    remediation: "Select a mutually supported group in the profile allow-list."
+    observability_requirement: "IKE_SA_INIT KE payload/selection or authorized telemetry"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: NIST-PFS-001
+    profiles: [nist_800_77r1]
+    enabled: true
+    field: child_pfs_group
+    operator: is_none
+    value: null
+    severity: MEDIUM
+    weight: 5.0
+    source_id: NIST80077R1
+    source_section: "Sections 2.1 and 7.2.6"
+    normative_level: RECOMMENDED_WHEN_RESOURCES_ALLOW
+    rationale: "NIST recommends PFS when resources permit; passive IKEv2 normally cannot establish this field."
+    remediation: "Enable a policy-approved fresh CHILD-SA key exchange after checking performance and peer compatibility."
+    observability_requirement: "Authorized CHILD-SA telemetry or candidate inference; absence in passive capture is not evidence of disablement"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"
+  - rule_id: NIST-LIFE-001
+    profiles: [nist_800_77r1]
+    enabled: true
+    field: child_lifetime_seconds
+    operator: greater_than
+    value: 28800
+    severity: MEDIUM
+    weight: 4.0
+    source_id: NIST80077R1
+    source_section: "Summary table and Section 7.2.6"
+    normative_level: NIST_PROFILE
+    rationale: "The versioned profile uses the guide's eight-hour value as its maximum time lifetime; traffic limits remain separately required operational policy."
+    remediation: "Set CHILD-SA time and traffic lifetimes within the selected organizational profile."
+    observability_requirement: "Authorized endpoint configuration/state; passive rekey timing does not prove configured lifetime"
+    introduced: "0.1.0"
+    last_reviewed: "2026-09-13"

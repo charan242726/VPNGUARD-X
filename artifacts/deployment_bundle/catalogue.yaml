@@ -1,0 +1,166 @@
+catalogue_id: "VPNGUARD_X_REFERENCE_CANDIDATES_0.1.0"
+description: "Finite, tested-template-oriented research catalogue; not an exhaustive IPsec transform registry"
+candidates:
+  - &modern_v4_native
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_GCM19
+    ike_version: IKEV2
+    outer_ip_version: 4
+    encapsulation: NATIVE_ESP
+    ike_encryption: ENCR_AES_GCM_16_256
+    ike_integrity: AUTH_NONE
+    ike_prf: PRF_HMAC_SHA2_384
+    ike_ke_group: 19
+    child_mode: TUNNEL
+    child_encryption: ENCR_AES_GCM_16_256
+    child_integrity: AUTH_NONE
+    child_pfs_group: 19
+    esn: false
+    anti_replay: true
+    child_lifetime_seconds: 3600
+    authentication_family: PSK
+    tags: [modern, nist_candidate]
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V4_NATT_TUNNEL_GCM19
+    encapsulation: NAT_T
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V6_NATIVE_TUNNEL_GCM19
+    outer_ip_version: 6
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V6_NATT_TUNNEL_GCM19
+    outer_ip_version: 6
+    encapsulation: NAT_T
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V4_NATIVE_TRANSPORT_GCM19
+    child_mode: TRANSPORT
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V6_NATIVE_TRANSPORT_GCM19
+    outer_ip_version: 6
+    child_mode: TRANSPORT
+  - &cbc14
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_CBC14
+    ike_version: IKEV2
+    outer_ip_version: 4
+    encapsulation: NATIVE_ESP
+    ike_encryption: ENCR_AES_CBC_256
+    ike_integrity: AUTH_HMAC_SHA2_256_128
+    ike_prf: PRF_HMAC_SHA2_256
+    ike_ke_group: 14
+    child_mode: TUNNEL
+    child_encryption: ENCR_AES_CBC_256
+    child_integrity: AUTH_HMAC_SHA2_256_128
+    child_pfs_group: 14
+    esn: false
+    anti_replay: true
+    child_lifetime_seconds: 3600
+    authentication_family: PSK
+    tags: [modern, nist_candidate]
+  - <<: *cbc14
+    candidate_id: MODERN_V4_NATT_TUNNEL_CBC14
+    encapsulation: NAT_T
+  - <<: *cbc14
+    candidate_id: MODERN_V6_NATIVE_TUNNEL_CBC14
+    outer_ip_version: 6
+  - <<: *cbc14
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_CBC14_NOPFS
+    child_pfs_group: NONE
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_GCM19_ESN
+    esn: true
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_GCM19_LONG_LIFE
+    child_lifetime_seconds: 86400
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_GCM19_CERT
+    authentication_family: CERTIFICATE
+  - <<: *modern_v4_native
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_GCM19_NOPFS
+    child_pfs_group: NONE
+  - &gcm20
+    <<: *modern_v4_native
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_GCM20
+    ike_ke_group: 20
+    child_pfs_group: 20
+  - <<: *gcm20
+    candidate_id: MODERN_V4_NATT_TUNNEL_GCM20
+    encapsulation: NAT_T
+  - &chacha31
+    <<: *modern_v4_native
+    candidate_id: MODERN_V4_NATIVE_TUNNEL_CHACHA31
+    ike_encryption: ENCR_CHACHA20_POLY1305
+    ike_prf: PRF_HMAC_SHA2_256
+    ike_ke_group: 31
+    child_encryption: ENCR_CHACHA20_POLY1305
+    child_pfs_group: 31
+  - <<: *chacha31
+    candidate_id: MODERN_V4_NATT_TUNNEL_CHACHA31
+    encapsulation: NAT_T
+  - <<: *chacha31
+    candidate_id: MODERN_V6_NATIVE_TUNNEL_CHACHA31
+    outer_ip_version: 6
+  - <<: *chacha31
+    candidate_id: MODERN_V4_NATIVE_TRANSPORT_CHACHA31
+    child_mode: TRANSPORT
+  - <<: *cbc14
+    candidate_id: MODERN_V4_NATIVE_TRANSPORT_CBC14
+    child_mode: TRANSPORT
+  - &deprecated_i2
+    candidate_id: DEPRECATED_IKEV2_V4_3DES_GROUP2
+    ike_version: IKEV2
+    outer_ip_version: 4
+    encapsulation: NATIVE_ESP
+    ike_encryption: ENCR_3DES
+    ike_integrity: AUTH_HMAC_SHA1_96
+    ike_prf: PRF_HMAC_SHA1
+    ike_ke_group: 2
+    child_mode: TUNNEL
+    child_encryption: ENCR_3DES
+    child_integrity: AUTH_HMAC_SHA1_96
+    child_pfs_group: NONE
+    esn: false
+    anti_replay: true
+    child_lifetime_seconds: 3600
+    authentication_family: PSK
+    tags: [deprecated]
+  - <<: *deprecated_i2
+    candidate_id: DEPRECATED_IKEV2_V4_3DES_GROUP5_NATT
+    ike_ke_group: 5
+    encapsulation: NAT_T
+  - &legacy_i1
+    candidate_id: LEGACY_IKEV1_V4_3DES_GROUP2
+    ike_version: IKEV1
+    outer_ip_version: 4
+    encapsulation: NATIVE_ESP
+    ike_encryption: ENCR_3DES
+    ike_integrity: AUTH_HMAC_SHA1_96
+    ike_prf: PRF_HMAC_SHA1
+    ike_ke_group: 2
+    child_mode: TUNNEL
+    child_encryption: ENCR_3DES
+    child_integrity: AUTH_HMAC_SHA1_96
+    child_pfs_group: NONE
+    esn: false
+    anti_replay: true
+    child_lifetime_seconds: 3600
+    authentication_family: PSK
+    tags: [legacy, deprecated, negative_control]
+  - <<: *legacy_i1
+    candidate_id: LEGACY_IKEV1_V4_DES_GROUP1
+    ike_encryption: ENCR_DES
+    ike_integrity: AUTH_HMAC_MD5_96
+    ike_prf: PRF_HMAC_MD5
+    ike_ke_group: 1
+    child_encryption: ENCR_DES
+    child_integrity: AUTH_HMAC_MD5_96
+  - <<: *legacy_i1
+    candidate_id: LEGACY_IKEV1_V4_3DES_GROUP2_NATT
+    encapsulation: NAT_T
+    child_pfs_group: 2
+  - <<: *cbc14
+    candidate_id: LEGACY_IKEV1_V4_AES_CBC_GROUP14
+    ike_version: IKEV1
+    tags: [legacy, negative_control]
+  - <<: *cbc14
+    candidate_id: DEPRECATED_IKEV2_V4_CBC_GROUP5
+    ike_ke_group: 5
+    child_pfs_group: 5
+    tags: [deprecated, negative_control]

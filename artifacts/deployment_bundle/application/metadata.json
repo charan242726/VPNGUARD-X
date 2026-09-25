@@ -1,0 +1,53 @@
+{
+  "classes": [
+    "BULK_FILE",
+    "ICMP_CONTROL",
+    "INTERACTIVE_MESSAGING",
+    "VIDEO",
+    "VOIP",
+    "WEB"
+  ],
+  "feature_names": [
+    "packet_count",
+    "byte_count",
+    "duration_seconds",
+    "packet_rate",
+    "byte_rate",
+    "size_mean",
+    "size_std",
+    "size_min",
+    "size_max",
+    "size_q25",
+    "size_median",
+    "size_q75",
+    "iat_mean",
+    "iat_std",
+    "iat_min",
+    "iat_max",
+    "forward_packet_fraction",
+    "direction_switch_rate",
+    "esp_sequence_gap_count",
+    "truncated_packet_fraction",
+    "kind_fraction_ike",
+    "kind_fraction_ike_natt",
+    "kind_fraction_esp_native",
+    "kind_fraction_esp_udp",
+    "kind_fraction_nat_keepalive",
+    "kind_fraction_other"
+  ],
+  "model_hash": "6c67765ff29fdd9c5106e1c3e5bf4a28a11d05f75f42d7fe63598077a4177d99",
+  "model_type": "XGBoostBaseline",
+  "parameters": {
+    "colsample_bytree": 0.8,
+    "eval_metric": "mlogloss",
+    "learning_rate": 0.05,
+    "max_depth": 6,
+    "n_estimators": 300,
+    "n_jobs": 1,
+    "objective": "multi:softprob",
+    "random_state": 11,
+    "subsample": 0.8
+  },
+  "seed": 11,
+  "training_manifest_hash": "7a97f7a4f72b36ad70fd256aa1de18bd4040e7fa2c7a62ccf0a9473898277ea6"
+}

@@ -29,6 +29,18 @@ if ! need_command dumpcap; then
   exit 1
 fi
 
+if ! "$PYTHON_BIN" -c 'import sys; sys.exit(0 if (3, 12) <= sys.version_info[:2] < (3, 13) else 1)' 2>/dev/null; then
+  echo "VPNGUARD-X requires Python 3.12 (the ML runtime is pinned to that supported version). Found: $($PYTHON_BIN --version 2>&1)" >&2
+  echo "Set PYTHON_BIN to a Python 3.12 executable and rerun this script." >&2
+  exit 1
+fi
+
+if ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major >= 23 || (major === 22 && minor >= 12) ? 0 : 1)' >/dev/null 2>&1; then
+  echo "VPNGUARD-X desktop requires Node.js 22.12 or newer (Electron 44/Vite 8). Found: $(node --version 2>&1)" >&2
+  echo "Install a current Node.js release, then rerun this script. The distro nodejs package may be too old." >&2
+  exit 1
+fi
+
 cd "$ROOT_DIR"
 mkdir -p "$(dirname "$APP_VENV")"
 "$PYTHON_BIN" -m venv "$APP_VENV"

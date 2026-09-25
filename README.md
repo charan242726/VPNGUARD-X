@@ -87,6 +87,8 @@ npm run dev
 ## Linux desktop installation
 
 Full guide: [Linux Installation](docs/Linux_Installation.md).
+Source installation requires Python 3.12 and Node.js 22.12 or newer; the
+installer checks both versions and reports which prerequisite is unsupported.
 
 For a source checkout on Debian/Ubuntu-family Linux, run the reviewed installer:
 

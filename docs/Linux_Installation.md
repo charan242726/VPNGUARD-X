@@ -4,6 +4,11 @@ VPNGUARD-X is a Linux-focused, local-first research prototype. The desktop UI
 and PCAP analysis run locally; packet capture is permitted only on interfaces
 the operator is authorized to monitor.
 
+Source installation requires Python 3.12 and Node.js 22.12 or newer. Some
+Linux distributions ship an older Node.js in their default package repository;
+the installer checks versions before downloading project dependencies and
+prints the detected version if it is unsupported.
+
 ## Source installation (recommended for SIH demonstration)
 
 ```bash

@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('vpnguardx', {
+  isDesktop: true,
+  getBackendHealth: () => ipcRenderer.invoke('get-backend-health'),
   getInterfaces: () => ipcRenderer.invoke('get-interfaces'),
   selectPcap: () => ipcRenderer.invoke('select-pcap'),
   selectCooperativeTelemetry: () => ipcRenderer.invoke('select-cooperative-telemetry'),

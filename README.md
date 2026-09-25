@@ -104,6 +104,19 @@ optionally asks an administrator to grant packet-capture capability **only** to
 capability to the Python analyzer. Accept that prompt only on a machine and
 interfaces you are authorized to monitor.
 
+`launch-desktop.sh` opens Electron. Do **not** open `http://localhost:5173`
+in a browser: a browser has no Electron security bridge, cannot invoke the
+local Python analyzer, and is intentionally blocked from presenting the
+analyst console. On startup, the desktop app validates the local Python
+runtime and the bundled deployment model before enabling analysis.
+
+To diagnose an installation before opening the UI:
+
+```bash
+~/.config/VPNGUARD-X/.venv/bin/python vpnguardx.py health \
+  --deployment artifacts/deployment_bundle --allow-demo-deployment
+```
+
 To create the Debian package from source:
 
 ```bash

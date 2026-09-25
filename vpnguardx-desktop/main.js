@@ -14,10 +14,20 @@ function backendDirectory() {
 function pythonExecutable(backendDir) {
   const candidates = [
     process.env.VPNGUARDX_PYTHON,
-    app.isPackaged ? path.join(app.getPath('userData'), '.venv', 'bin', 'python') : path.join(backendDir, '.venv', 'bin', 'python'),
+    // install.sh creates this exact app-local environment for both source and
+    // packaged Electron.  Do not silently prefer a random system Python.
+    path.join(app.getPath('userData'), '.venv', 'bin', 'python'),
+    path.join(backendDir, '.venv', 'bin', 'python'),
     'python3', 'python'
   ].filter(Boolean);
   return candidates.find(candidate => candidate === 'python3' || candidate === 'python' || fs.existsSync(candidate));
+}
+
+function spawnBackend(backendDir, args) {
+  return spawn(pythonExecutable(backendDir), args, {
+    cwd: backendDir,
+    env: { ...process.env, PATH: `${path.join(app.getPath('userData'), '.venv', 'bin')}:${path.join(backendDir, '.venv', 'bin')}:${process.env.PATH}` }
+  });
 }
 
 function createWindow() {
@@ -173,15 +183,13 @@ ipcMain.handle('run-analysis', async (event, pcapPath, telemetryPath = null) => 
       '--allow-demo-deployment', '--output', outputDirectory
     ];
     if (telemetryPath) args.push('--cooperative-json', telemetryPath, '--cooperative-source', 'GATEWAY_TELEMETRY');
-    const pyProcess = spawn(pythonExecutable(backendDir), args, {
-      cwd: backendDir,
-      env: { ...process.env, PATH: `${path.join(backendDir, '.venv', 'bin')}:${process.env.PATH}` }
-    });
+    const pyProcess = spawnBackend(backendDir, args);
 
     let stderr = '';
     pyProcess.stderr.on('data', (data) => {
       stderr += data.toString();
     });
+    pyProcess.on('error', error => reject(new Error(`Unable to start Python analysis runtime: ${error.message}`)));
 
     pyProcess.on('close', (code) => {
       if (code !== 0) {
@@ -229,14 +237,12 @@ ipcMain.handle('collect-local-gateway-telemetry', async () => {
   const backendDir = backendDirectory();
   const outputPath = path.join(app.getPath('temp'), `vpnguardx-gateway-${Date.now()}.json`);
   return new Promise((resolve, reject) => {
-    const collector = spawn(pythonExecutable(backendDir), [
+    const collector = spawnBackend(backendDir, [
       'vpnguardx.py', 'telemetry', '--output', outputPath, '--i-am-authorized'
-    ], {
-      cwd: backendDir,
-      env: { ...process.env, PATH: `${path.join(backendDir, '.venv', 'bin')}:${process.env.PATH}` }
-    });
+    ]);
     let stderr = '';
     collector.stderr.on('data', data => { stderr += data.toString(); });
+    collector.on('error', error => reject(new Error(`Unable to start Python telemetry runtime: ${error.message}`)));
     collector.on('close', code => {
       if (code !== 0) return reject(new Error(`Gateway telemetry unavailable: ${stderr || 'no readable local IPsec SA state.'}`));
       try {
@@ -244,6 +250,27 @@ ipcMain.handle('collect-local-gateway-telemetry', async () => {
         if (containsSensitiveKey(data)) throw new Error('Collector returned prohibited secret/key-material fields.');
         resolve({ path: outputPath, name: 'Local gateway telemetry', propertyCount: Object.keys(data).length, collectedAt: new Date().toISOString() });
       } catch (error) { reject(error); }
+    });
+  });
+});
+
+ipcMain.handle('get-backend-health', async () => {
+  const backendDir = backendDirectory();
+  return new Promise((resolve, reject) => {
+    const health = spawnBackend(backendDir, [
+      'vpnguardx.py', 'health',
+      '--deployment', path.join(backendDir, 'artifacts', 'deployment_bundle'),
+      '--allow-demo-deployment'
+    ]);
+    let stdout = '';
+    let stderr = '';
+    health.stdout.on('data', data => { stdout += data.toString(); });
+    health.stderr.on('data', data => { stderr += data.toString(); });
+    health.on('error', error => reject(new Error(`Unable to start Python runtime: ${error.message}`)));
+    health.on('close', code => {
+      if (code !== 0) return reject(new Error(`Backend/model health check failed: ${stderr || 'unknown error'}`));
+      try { resolve(JSON.parse(stdout)); }
+      catch { reject(new Error('Backend health check returned invalid JSON.')); }
     });
   });
 });

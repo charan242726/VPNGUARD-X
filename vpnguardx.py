@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
+import sys
 from pathlib import Path
 
 from common.logging import configure_logging
 from deployment.runtime import pipeline_for
+from deployment.bundle import load_deployment
 from observability import collect_local_gateway_telemetry
 from parser import capture_live
 from reports import write_reports
@@ -33,6 +36,9 @@ def build_parser() -> argparse.ArgumentParser:
     telemetry = subparsers.add_parser("telemetry", help="collect normalized read-only local IPsec gateway facts")
     telemetry.add_argument("--output", type=Path, required=True)
     telemetry.add_argument("--i-am-authorized", action="store_true", help="required acknowledgement")
+    health = subparsers.add_parser("health", help="validate Python runtime and a verified deployment bundle")
+    health.add_argument("--deployment", type=Path, required=True)
+    health.add_argument("--allow-demo-deployment", action="store_true")
     return parser
 
 
@@ -72,6 +78,15 @@ def main(argv: list[str] | None = None) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(properties, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(json.dumps({"output": str(args.output.resolve()), "property_count": len(properties)}, indent=2))
+        return 0
+    if args.command == "health":
+        deployment = load_deployment(args.deployment, allow_demo=args.allow_demo_deployment)
+        print(json.dumps({
+            "status": "ok",
+            "python": sys.version.split()[0],
+            "platform": platform.platform(),
+            "deployment": deployment.to_dict(),
+        }, indent=2, sort_keys=True))
         return 0
     return 2
 

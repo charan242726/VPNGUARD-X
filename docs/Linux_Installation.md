@@ -18,6 +18,18 @@ model dependencies and Electron dependencies, and optionally requests
 administrator approval to grant `dumpcap` packet-capture capability. The
 desktop app and Python analyzer remain unprivileged.
 
+Use `./scripts/launch-desktop.sh` to open the Electron application. Do not
+open the Vite development URL in a browser: it cannot access the local Python
+backend or model bundle and is deliberately shown a blocking message instead
+of a mock dashboard.
+
+Confirm the backend and verified deployment bundle are usable with:
+
+```bash
+~/.config/VPNGUARD-X/.venv/bin/python vpnguardx.py health \
+  --deployment artifacts/deployment_bundle --allow-demo-deployment
+```
+
 ## Debian package
 
 Build a package from a source checkout:

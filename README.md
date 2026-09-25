@@ -91,8 +91,8 @@ Full guide: [Linux Installation](docs/Linux_Installation.md).
 For a source checkout on Debian/Ubuntu-family Linux, run the reviewed installer:
 
 ```bash
-git clone <your-VPNGUARD-X-repository-url>
-cd VPNGUARD-X_SIH_0.3.0
+git clone https://github.com/charan242726/ip-sec-vpn-analyzer-new-.git
+cd ip-sec-vpn-analyzer-new-
 ./install.sh
 ./scripts/launch-desktop.sh
 ```

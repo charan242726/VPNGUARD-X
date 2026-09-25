@@ -73,7 +73,10 @@ ipcMain.handle('get-interfaces', async () => {
     // dumpcap is deliberately the only binary granted capture capability by
     // install.sh; listing and capture must use that same constrained tool.
     exec('dumpcap -D', (error, stdout, stderr) => {
-      if (error) return resolve([]);
+      if (error) return resolve({
+        interfaces: [],
+        error: `dumpcap could not enumerate capture interfaces: ${(stderr || error.message || 'permission denied').trim()}`
+      });
       const lines = stdout.split('\n').filter(l => l.trim().length > 0);
       const interfaces = lines.map(line => {
         const match = line.match(/^\d+\.(\S+)(?:\s+\[(.*?)\]|\s+(.*))?/);
@@ -82,7 +85,7 @@ ipcMain.handle('get-interfaces', async () => {
         }
         return { name: line, description: line };
       }).filter(i => i.name);
-      resolve(interfaces);
+      resolve({ interfaces, error: interfaces.length ? null : 'dumpcap reported no capture interfaces.' });
     });
   });
 });

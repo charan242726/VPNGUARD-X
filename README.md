@@ -27,14 +27,14 @@ No empirical accuracy value is hard-coded or claimed by the source repository. A
 - CGII hard-constraint projection, conflict abstention, posterior renormalization, entropy, completeness, and unresolved-field reporting.
 - Versioned RFC/NIST rules with source section/rationale; certain/possible/not-supported/not-evaluable semantics.
 - Candidate-wise normalized policy-loss interval and catalogue-bounded minimum-change remediation.
-- FastAPI, Streamlit, CLI, technical/executive Markdown, and lossless JSON reports.
+- FastAPI, Streamlit, CLI, executive and technical PDF reports, Markdown copies, and lossless JSON evidence exports.
 - Docker-internal strongSwan 6.1.0 range compiler/runner, seeded traffic generator, redacted telemetry, and PCAP-ground-truth validation.
 - Generalization splits, 10/30/50% deterministic incomplete-capture generation, metrics, and active-learning harness.
 - Optional RFC 9370 multiple-key-exchange evidence module that never identifies a protected KEM from size alone.
 
 ## Quick proof-of-function
 
-Python 3.12 is required. The core path needs only PyYAML.
+Python 3.12 is required. Analysis uses PyYAML; PDF report generation also uses the pinned ReportLab dependency.
 
 ```bash
 python -m venv .venv
@@ -103,6 +103,14 @@ optionally asks an administrator to grant packet-capture capability **only** to
 `dumpcap`. It never runs the Electron application as root and never grants a
 capability to the Python analyzer. Accept that prompt only on a machine and
 interfaces you are authorized to monitor.
+
+For live analysis, select the interface that sees the IPsec outer peer
+addresses. A Docker lab typically uses its host bridge; a real gateway
+typically uses its underlay NIC. A tunnel interface may show decapsulated
+inner traffic, while `any` or several bridges may see the same outer packets.
+The live sensor and technical report show the selected interface, packet and
+session counts, and capture hash. Empty IPsec captures are rejected instead
+of producing an assessment.
 
 `launch-desktop.sh` opens Electron. Do **not** open `http://localhost:5173`
 in a browser: a browser has no Electron security bridge, cannot invoke the

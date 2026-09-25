@@ -47,7 +47,7 @@ fi
 
 echo
 echo "Installation complete. Start the desktop prototype with:"
-echo "  cd vpnguardx-desktop && npm run dev"
+echo "  ./scripts/launch-desktop.sh"
 echo "For a Debian package: cd vpnguardx-desktop && npm run dist:deb"
 echo "Python runtime installed at: $APP_VENV"
 echo "Live capture is limited to interfaces you are authorized to monitor."

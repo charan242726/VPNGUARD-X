@@ -23,6 +23,16 @@ open the Vite development URL in a browser: it cannot access the local Python
 backend or model bundle and is deliberately shown a blocking message instead
 of a mock dashboard.
 
+For live analysis, select the interface that sees the IPsec outer peer
+addresses. A Docker lab typically uses its host bridge; a physical or cloud
+gateway typically uses its underlay NIC. A VPN tunnel interface carries
+decapsulated inner traffic and may not show native ESP. `any` or multiple
+bridges can see the same packets, so matching assessments can be legitimate.
+After capture, the sensor shows the interface, packet count, IKE/ESP counts,
+and trace SHA-256. The technical PDF and evidence JSON preserve that capture
+provenance. If no IPsec packets were captured, the app reports that and does
+not create an assessment.
+
 Confirm the backend and verified deployment bundle are usable with:
 
 ```bash

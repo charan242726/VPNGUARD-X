@@ -13,6 +13,7 @@ function backendDirectory() {
 }
 
 function pythonExecutable(backendDir) {
+  if (app.isPackaged) return process.env.VPNGUARDX_PYTHON || 'python3.12';
   const candidates = [
     process.env.VPNGUARDX_PYTHON,
     // install.sh creates this exact app-local environment for both source and
@@ -25,10 +26,15 @@ function pythonExecutable(backendDir) {
 }
 
 function spawnBackend(backendDir, args) {
-  return spawn(pythonExecutable(backendDir), args, {
-    cwd: backendDir,
-    env: { ...process.env, PATH: `${path.join(app.getPath('userData'), '.venv', 'bin')}:${path.join(backendDir, '.venv', 'bin')}:${process.env.PATH}` }
-  });
+  const packaged = app.isPackaged;
+  const environment = {
+    ...process.env,
+    PATH: `${path.join(app.getPath('userData'), '.venv', 'bin')}:${path.join(backendDir, '.venv', 'bin')}:${process.env.PATH}`
+  };
+  if (packaged) {
+    environment.PYTHONPATH = [path.join(backendDir, 'python_packages'), backendDir, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter);
+  }
+  return spawn(pythonExecutable(backendDir), args, { cwd: backendDir, env: environment });
 }
 
 function createWindow() {

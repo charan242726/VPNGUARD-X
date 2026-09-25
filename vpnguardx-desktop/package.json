@@ -8,8 +8,10 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on tcp:5173 && cross-env NODE_ENV=development electron .\"",
     "build": "vite build && electron-builder",
-    "dist:deb": "vite build && electron-builder --linux deb",
-    "dist:appimage": "vite build && electron-builder --linux AppImage"
+    "dist:deb": "bash ../scripts/build-deb.sh",
+    "dist:deb:pack": "vite build && electron-builder --linux deb",
+    "dist:appimage": "bash ../scripts/build-deb.sh --appimage",
+    "dist:appimage:pack": "vite build && electron-builder --linux AppImage"
   },
   "keywords": [],
   "type": "commonjs",
@@ -59,7 +61,9 @@
       { "from": "../remediation", "to": "backend/remediation", "filter": ["**/*.py"] },
       { "from": "../reports", "to": "backend/reports", "filter": ["**/*.py"] },
       { "from": "../risk", "to": "backend/risk", "filter": ["**/*.py"] },
-      { "from": "../artifacts/deployment_bundle", "to": "backend/artifacts/deployment_bundle" }
+      { "from": "../artifacts/deployment_bundle", "to": "backend/artifacts/deployment_bundle" },
+      { "from": "../examples/synthetic_demo/synthetic_ikev2_esp.pcap", "to": "backend/artifacts/smoke_demo/synthetic_ikev2_esp.pcap" },
+      { "from": "backend-runtime/python_packages", "to": "backend/python_packages" }
     ],
     "linux": {
       "target": ["deb", "AppImage"],
@@ -68,7 +72,7 @@
     },
     "deb": {
       "synopsis": "IPsec VPN protocol analyzer and security assessment console",
-      "depends": ["python3 (>= 3.12)", "tcpdump"]
+      "depends": ["python3.12", "wireshark-common", "libnss3", "libasound2t64"]
     }
   }
 }

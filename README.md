@@ -127,19 +127,22 @@ To diagnose an installation before opening the UI:
   --deployment artifacts/deployment_bundle --allow-demo-deployment
 ```
 
-To create the Debian package from source:
+To create the self-contained Ubuntu 24.04 amd64 Debian package (Docker is used
+to stage the pinned Python 3.12 libraries):
 
 ```bash
-cd vpnguardx-desktop
-npm run dist:deb
+npm --prefix vpnguardx-desktop ci
+npm --prefix vpnguardx-desktop run dist:deb
 ```
 
-The resulting package is `vpnguardx-desktop/dist/VPNGUARD-X-<version>-amd64.deb`.
-It bundles the desktop UI, Python analysis source, and verified deployment
-bundle. The target Linux machine still needs a compatible Python runtime with
-the declared ML dependencies; use `install.sh` on that machine before relying
-on model-backed analysis. This is deliberate: the desktop app is never silently
-installed with a privileged or opaque Python environment.
+Install `vpnguardx-desktop/dist/VPNGUARD-X-1.0.0-amd64.deb` with Ubuntu's
+package manager. It bundles the desktop UI, analysis source, verified
+deployment bundle, and pinned Python analysis libraries; Ubuntu installs the
+declared Python 3.12 and `dumpcap` system dependencies. The target does not
+need the source checkout or a separate pip setup. Live capture still requires
+explicit `dumpcap` capability authorization; PCAP upload does not.
+This `.deb` targets Ubuntu 24.04 amd64, not Fedora; Fedora requires a separate
+RPM package.
 
 Analyze with an explicit verified bundle outside the desktop console:
 

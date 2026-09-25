@@ -47,22 +47,31 @@ Confirm the backend and verified deployment bundle are usable with:
 
 ## Debian package
 
-Build a package from a source checkout:
+Build a self-contained package from a source checkout (Docker is used to stage
+the locked Python 3.12 runtime libraries):
 
 ```bash
-cd vpnguardx-desktop
-npm run dist:deb
+cd ip-sec-vpn-analyzer-new-
+npm --prefix vpnguardx-desktop ci
+npm --prefix vpnguardx-desktop run dist:deb
 ```
 
-Install the generated package on Debian/Ubuntu:
+Install the generated package on Ubuntu 24.04 (amd64):
 
 ```bash
-sudo apt install ./dist/VPNGUARD-X-1.0.0-amd64.deb
+sudo apt install ./vpnguardx-desktop/dist/VPNGUARD-X-1.0.0-amd64.deb
 ```
 
-The package contains the Electron UI, backend source, and verified deployment
-bundle. Before first model-backed analysis on a new machine, run `./install.sh`
-from a trusted source checkout to install the supported local Python runtime.
+The package contains the Electron UI, backend source, verified deployment
+bundle, and locked Python analysis libraries. A compatible Python 3.12 runtime
+and `dumpcap` are declared Debian dependencies, so installation does not
+require a separate source checkout or a pip download. Open VPNGUARD-X from the
+applications menu. PCAP analysis works without capture privileges; live
+capture requires separately authorizing `dumpcap` as described below.
+
+This `.deb` is not installable on Fedora. Fedora needs a separate RPM package
+with Fedora-specific dependency names; do not convert this package with
+`alien` or force-install it.
 
 ## Capture permissions
 

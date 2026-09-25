@@ -215,15 +215,16 @@ ipcMain.handle('export-report', async (event, format) => {
   let srcFile = '';
   
   if (format === 'json') srcFile = path.join(latestDir, 'assessment.json');
-  else if (format === 'technical') srcFile = path.join(latestDir, 'technical_report.md');
-  else if (format === 'executive') srcFile = path.join(latestDir, 'executive_report.md');
+  else if (format === 'technical') srcFile = path.join(latestDir, 'technical_report.pdf');
+  else if (format === 'executive') srcFile = path.join(latestDir, 'executive_report.pdf');
+  else throw new Error('Unsupported report format.');
   
   if (!fs.existsSync(srcFile)) {
     throw new Error('Report not found. Run analysis first.');
   }
 
   const { canceled, filePath } = await dialog.showSaveDialog({
-    defaultPath: `vpnguardx-${format}-report.${format === 'json' ? 'json' : 'md'}`
+    defaultPath: `vpnguardx-${format}-report.${format === 'json' ? 'json' : 'pdf'}`
   });
 
   if (!canceled && filePath) {

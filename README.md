@@ -44,7 +44,7 @@ python -m unittest discover -s tests -v
 python scripts/smoke_demo.py
 ```
 
-The smoke demo creates a synthetic IKEv2/ESP fixture—not experimental data—and produces `assessment.json`, `technical_report.md`, and `executive_report.md` under `artifacts/smoke_demo/reports/`.
+The smoke demo creates a synthetic IKEv2/ESP fixture—not experimental data—and produces an evidence JSON export, Markdown copies, and polished `technical_report.pdf` and `executive_report.pdf` files under `artifacts/smoke_demo/reports/`.
 
 Analyze an authorized classic PCAP:
 

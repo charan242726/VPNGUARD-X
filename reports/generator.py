@@ -225,6 +225,9 @@ def _technical_pdf(data: dict[str, Any], destination: Path) -> None:
     story += [lib["PageBreak"](), _paragraph(lib, styles, "Capture and protocol inventory", "VgxH1")]
     capture = data["capture"]
     story.append(_table(lib, theme, [["Metric", "Value"], ["Packets inspected", f"{capture.get('packet_count', 0):,}"], ["IKE security associations", len(capture.get("ike_sessions", []))], ["ESP flows", len(capture.get("esp_flows", []))], ["Capture digest", capture.get("sha256", "—")], ["Assessment mode", data.get("mode", "—")]], [58 * lib["mm"], 132 * lib["mm"]]))
+    collection = capture.get("collection")
+    if collection:
+        story += [_paragraph(lib, styles, "Live collection provenance", "VgxH2"), _table(lib, theme, [["Collection field", "Value"], ["Selected interface", collection.get("interface", "—")], ["Capture filter", collection.get("filter", "—")], ["Collection window", f"{collection.get('duration_seconds', '—')} seconds"], ["Started", collection.get("started_at_utc", "—")], ["Completed", collection.get("completed_at_utc", "—")], ["Probe performed", "No — passive collection only"]], [58 * lib["mm"], 132 * lib["mm"]])]
     session_rows = [["IKE SA", "Endpoints", "Exchange records", "Retransmissions"]]
     for session in capture.get("ike_sessions", []):
         endpoints = ", ".join(" ↔ ".join(pair) for pair in session.get("endpoints", [])[:1])

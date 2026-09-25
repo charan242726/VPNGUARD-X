@@ -23,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("pcap", type=Path)
     analyze.add_argument("--profile", choices=["nist_800_77r1", "ietf_baseline"], default="nist_800_77r1")
     analyze.add_argument("--cooperative-json", type=Path, help="authorized canonical endpoint properties")
+    analyze.add_argument("--capture-metadata", type=Path, help="trusted local live-capture manifest; no secret fields are accepted")
     analyze.add_argument("--cooperative-source", default="SCENARIO_GROUND_TRUTH", help="provenance label for authorized cooperative properties")
     analyze.add_argument("--output", type=Path, default=Path("artifacts/latest"))
     analyze.add_argument("--include-packets", action="store_true")
@@ -47,10 +48,15 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "analyze":
         cooperative = None
+        capture_metadata = None
         if args.cooperative_json:
             cooperative = json.loads(args.cooperative_json.read_text(encoding="utf-8"))
             if not isinstance(cooperative, dict):
                 raise ValueError("cooperative JSON root must be an object")
+        if args.capture_metadata:
+            capture_metadata = json.loads(args.capture_metadata.read_text(encoding="utf-8"))
+            if not isinstance(capture_metadata, dict):
+                raise ValueError("capture metadata JSON root must be an object")
         bundle = pipeline_for(
             args.profile,
             path=args.deployment,
@@ -59,8 +65,11 @@ def main(argv: list[str] | None = None) -> int:
             args.pcap,
             cooperative_properties=cooperative,
             cooperative_source=args.cooperative_source,
+            capture_metadata=capture_metadata,
             include_packets=args.include_packets,
         )
+        if capture_metadata and bundle.capture["packet_count"] == 0:
+            raise ValueError("live capture contains no IPsec packets; no assessment report was generated")
         paths = write_reports(bundle, args.output)
         print(json.dumps({"run_id": bundle.run["run_id"], "reports": paths}, indent=2))
         return 0

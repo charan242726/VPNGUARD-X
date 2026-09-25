@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const fs = require('fs');
+const crypto = require('crypto');
 
 app.setName('VPNGUARD-X');
 let mainWindow;
@@ -69,8 +70,9 @@ app.on('window-all-closed', () => {
 
 ipcMain.handle('get-interfaces', async () => {
   return new Promise((resolve, reject) => {
-    // Basic network interface enumeration for tcpdump
-    exec('tcpdump -D', (error, stdout, stderr) => {
+    // dumpcap is deliberately the only binary granted capture capability by
+    // install.sh; listing and capture must use that same constrained tool.
+    exec('dumpcap -D', (error, stdout, stderr) => {
       if (error) return resolve([]);
       const lines = stdout.split('\n').filter(l => l.trim().length > 0);
       const interfaces = lines.map(line => {
@@ -130,33 +132,51 @@ ipcMain.handle('start-capture', async (event, iface, durationSeconds) => {
       return reject(new Error('Capture duration must be a whole number between 5 and 3600 seconds.'));
     }
     if (typeof iface !== 'string' || !iface) return reject(new Error('Select a valid capture interface.'));
+    const startedAt = new Date().toISOString();
     const pcapPath = path.join(app.getPath('temp'), `vpnguardx-capture-${Date.now()}.pcap`);
-    
-    // On Linux, this might need sudo. On Windows, needs Npcap.
-    captureProcess = spawn('tcpdump', ['-i', iface, '-w', pcapPath, 'esp', 'or', 'udp', 'port', '500', 'or', 'udp', 'port', '4500', '-G', durationSeconds.toString(), '-W', '1']);
-    
+    const filter = 'udp port 500 or udp port 4500 or ip proto 50 or ip6 proto 50';
+    // Capture exactly the selected interface. Do not use tcpdump rotation here:
+    // a single completed PCAP is required for traceable analysis and reporting.
+    const process = spawn('dumpcap', ['-i', iface, '-s', '0', '-f', filter, '-w', pcapPath, '-F', 'pcap']);
+    captureProcess = process;
     let errorMsg = '';
-    captureProcess.on('error', (error) => {
-      captureProcess = null;
-      reject(new Error(`Unable to start tcpdump: ${error.message}`));
+    process.on('error', (error) => {
+      if (captureProcess === process) captureProcess = null;
+      reject(new Error(`Unable to start dumpcap: ${error.message}`));
     });
-    captureProcess.stderr.on('data', (data) => {
+    process.stderr.on('data', (data) => {
       errorMsg += data.toString();
     });
 
-    captureProcess.on('close', (code) => {
-      captureProcess = null;
+    process.on('close', (code) => {
+      if (captureProcess === process) captureProcess = null;
       if (code !== 0 && code !== null) {
-        reject(new Error(`tcpdump failed (code ${code}): ${errorMsg}`));
-      } else {
+        return reject(new Error(`dumpcap failed (code ${code}): ${errorMsg}`));
+      }
+      if (!fs.existsSync(pcapPath) || fs.statSync(pcapPath).size <= 24) {
+        return reject(new Error(`No IKE, NAT-T, or ESP packets were captured on ${iface}. Choose the interface carrying the IPsec outer traffic, create authorized VPN traffic, then try again.`));
+      }
+      {
+        const manifest = {
+          interface: iface,
+          filter,
+          duration_seconds: durationSeconds,
+          started_at_utc: startedAt,
+          completed_at_utc: new Date().toISOString(),
+          packet_count: null,
+          capture_sha256: crypto.createHash('sha256').update(fs.readFileSync(pcapPath)).digest('hex'),
+          authorization_acknowledged: true,
+          active_probe_performed: false
+        };
+        fs.writeFileSync(`${pcapPath}.manifest.json`, JSON.stringify(manifest, null, 2));
         resolve(pcapPath);
       }
     });
 
     // Automatically kill after duration + 2 seconds just in case
     setTimeout(() => {
-      if (captureProcess) {
-        captureProcess.kill('SIGINT');
+      if (captureProcess === process) {
+        process.kill('SIGINT');
       }
     }, (durationSeconds + 2) * 1000);
   });
@@ -182,6 +202,8 @@ ipcMain.handle('run-analysis', async (event, pcapPath, telemetryPath = null) => 
       '--deployment', path.join(backendDir, 'artifacts', 'deployment_bundle'),
       '--allow-demo-deployment', '--output', outputDirectory
     ];
+    const manifestPath = `${pcapPath}.manifest.json`;
+    if (fs.existsSync(manifestPath)) args.push('--capture-metadata', manifestPath);
     if (telemetryPath) args.push('--cooperative-json', telemetryPath, '--cooperative-source', 'GATEWAY_TELEMETRY');
     const pyProcess = spawnBackend(backendDir, args);
 

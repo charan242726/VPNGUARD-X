@@ -73,6 +73,24 @@ class ParserPipelineTests(unittest.TestCase):
         self.assertEqual(data["mode"], "COOPERATIVE_VALIDATION")
         self.assertEqual(data["cgii"]["prediction_set"], ["MODERN_V4_NATIVE_TUNNEL_CBC14"])
 
+    def test_live_capture_metadata_is_provenance_not_configuration_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            pcap = write_synthetic_pcap(Path(directory) / "synthetic.pcap")
+            data = VPNGuardXPipeline().analyze(
+                pcap,
+                capture_metadata={
+                    "interface": "eth0",
+                    "filter": "udp port 500 or udp port 4500 or ip proto 50 or ip6 proto 50",
+                    "duration_seconds": 20,
+                    "authorization_acknowledged": True,
+                    "active_probe_performed": False,
+                    "psk": "must-not-be-retained",
+                },
+            ).to_dict()
+        self.assertEqual(data["capture"]["collection"]["interface"], "eth0")
+        self.assertNotIn("psk", data["capture"]["collection"])
+        self.assertNotIn("collection", {item["property_name"] for item in data["capture"]["evidence"]})
+
 
 if __name__ == "__main__":
     unittest.main()

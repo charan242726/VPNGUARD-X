@@ -96,6 +96,7 @@ class VPNGuardXPipeline:
         *,
         cooperative_properties: Mapping[str, Any] | None = None,
         cooperative_source: str = "SCENARIO_GROUND_TRUTH",
+        capture_metadata: Mapping[str, Any] | None = None,
         candidate_prior: PriorDistribution | None = None,
         calibrator: Any = None,
         application_model: ProbabilityModel | None = None,
@@ -239,6 +240,15 @@ class VPNGuardXPipeline:
             "assessment completed",
             extra={"run_id": run_id, "stage": "pipeline", "event": "ASSESSMENT_COMPLETED"},
         )
+        capture_data = capture.to_dict(include_packets=include_packets)
+        if capture_metadata:
+            allowed_capture_metadata = {
+                key: capture_metadata[key]
+                for key in ("interface", "filter", "duration_seconds", "started_at_utc", "completed_at_utc", "capture_sha256", "authorization_acknowledged", "active_probe_performed")
+                if key in capture_metadata
+            }
+            if allowed_capture_metadata:
+                capture_data["collection"] = allowed_capture_metadata
         return AnalysisBundle(
             mode=mode,
             run={
@@ -260,7 +270,7 @@ class VPNGuardXPipeline:
                     "total": total_ms,
                 },
             },
-            capture=capture.to_dict(include_packets=include_packets),
+            capture=capture_data,
             features={
                 "status": EvidenceStatus.DETERMINISTICALLY_DERIVED.value,
                 "flow_schema": list(FLOW_FEATURE_NAMES),

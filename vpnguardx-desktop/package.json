@@ -10,6 +10,8 @@
     "build": "vite build && electron-builder",
     "dist:deb": "bash ../scripts/build-deb.sh",
     "dist:deb:pack": "vite build && electron-builder --linux deb",
+    "dist:rpm": "bash ../scripts/build-deb.sh --rpm",
+    "dist:rpm:pack": "vite build && electron-builder --linux rpm",
     "dist:appimage": "bash ../scripts/build-deb.sh --appimage",
     "dist:appimage:pack": "vite build && electron-builder --linux AppImage"
   },
@@ -73,6 +75,10 @@
     "deb": {
       "synopsis": "IPsec VPN protocol analyzer and security assessment console",
       "depends": ["python3.12", "wireshark-common", "libnss3", "libasound2t64"]
+    },
+    "rpm": {
+      "fpm": ["--rpm-compression", "xz"],
+      "depends": ["python3.12", "wireshark-cli", "nss", "alsa-lib", "gtk3", "atk", "cups-libs", "libdrm", "libX11", "libXcomposite", "libXdamage", "libXext", "libXfixes", "libXrandr", "mesa-libgbm", "libxkbcommon", "libXScrnSaver", "at-spi2-core", "glib2"]
     }
   }
 }

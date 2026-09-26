@@ -7,6 +7,7 @@ __pycache__/
 venv/
 node_modules/
 vpnguardx-desktop/backend-runtime/
+vpnguardx-desktop/packages/
 artifacts/
 data/generated/
 models/artifacts/

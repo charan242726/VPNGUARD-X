@@ -135,14 +135,16 @@ npm --prefix vpnguardx-desktop ci
 npm --prefix vpnguardx-desktop run dist:deb
 ```
 
-Install `vpnguardx-desktop/dist/VPNGUARD-X-1.0.0-amd64.deb` with Ubuntu's
+Install `vpnguardx-desktop/packages/deb/VPNGUARD-X-1.0.0-amd64.deb` with Ubuntu's
 package manager. It bundles the desktop UI, analysis source, verified
 deployment bundle, and pinned Python analysis libraries; Ubuntu installs the
 declared Python 3.12 and `dumpcap` system dependencies. The target does not
 need the source checkout or a separate pip setup. Live capture still requires
 explicit `dumpcap` capability authorization; PCAP upload does not.
 This `.deb` targets Ubuntu 24.04 amd64, not Fedora; Fedora requires a separate
-RPM package.
+RPM. Build it with `npm --prefix vpnguardx-desktop run dist:rpm`, then install
+`vpnguardx-desktop/packages/rpm/VPNGUARD-X-1.0.0-x86_64.rpm` using `dnf` on Fedora 43
+or newer. See the [Linux installation guide](docs/Linux_Installation.md).
 
 Analyze with an explicit verified bundle outside the desktop console:
 

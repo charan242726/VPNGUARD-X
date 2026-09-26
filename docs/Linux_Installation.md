@@ -9,7 +9,7 @@ Linux distributions ship an older Node.js in their default package repository;
 the installer checks versions before downloading project dependencies and
 prints the detected version if it is unsupported.
 
-## Source installation (recommended for SIH demonstration)
+## Source installation (Debian/Ubuntu)
 
 ```bash
 git clone https://github.com/charan242726/ip-sec-vpn-analyzer-new-.git
@@ -22,6 +22,9 @@ The installer creates the runtime at `~/.config/VPNGUARD-X/.venv`, installs the
 model dependencies and Electron dependencies, and optionally requests
 administrator approval to grant `dumpcap` packet-capture capability. The
 desktop app and Python analyzer remain unprivileged.
+
+`install.sh` uses `apt-get` and is intended for Debian/Ubuntu. Fedora users
+should install the RPM package below instead.
 
 Use `./scripts/launch-desktop.sh` to open the Electron application. Do not
 open the Vite development URL in a browser: it cannot access the local Python
@@ -59,7 +62,7 @@ npm --prefix vpnguardx-desktop run dist:deb
 Install the generated package on Ubuntu 24.04 (amd64):
 
 ```bash
-sudo apt install ./vpnguardx-desktop/dist/VPNGUARD-X-1.0.0-amd64.deb
+sudo apt install ./vpnguardx-desktop/packages/deb/VPNGUARD-X-1.0.0-amd64.deb
 ```
 
 The package contains the Electron UI, backend source, verified deployment
@@ -69,9 +72,28 @@ require a separate source checkout or a pip download. Open VPNGUARD-X from the
 applications menu. PCAP analysis works without capture privileges; live
 capture requires separately authorizing `dumpcap` as described below.
 
-This `.deb` is not installable on Fedora. Fedora needs a separate RPM package
-with Fedora-specific dependency names; do not convert this package with
-`alien` or force-install it.
+The `.deb` is not installable on Fedora; use the RPM build below instead.
+
+## Fedora RPM
+
+Build the Fedora x86_64 package from the same source checkout (Docker is used
+to stage Python libraries and run the RPM packager):
+
+```bash
+npm --prefix vpnguardx-desktop ci
+npm --prefix vpnguardx-desktop run dist:rpm
+```
+
+Install it on Fedora 43 or newer:
+
+```bash
+sudo dnf install ./vpnguardx-desktop/packages/rpm/VPNGUARD-X-1.0.0-x86_64.rpm
+```
+
+The RPM bundles the same UI, sample capture, verified model bundle, and Python
+libraries as the Ubuntu package. Fedora installs `python3.12`, `wireshark-cli`
+(which provides `dumpcap`), and Electron's native runtime libraries. Live
+capture still requires separately granting capture capability to `dumpcap`.
 
 ## Capture permissions
 

@@ -1025,7 +1025,9 @@ export default function App() {
               {interfaces.length ? (
                 interfaces.map((x) => (
                   <option key={x.name} value={x.name}>
-                    {x.name} — {x.description}
+                    {x.description && x.description !== x.name
+                      ? `${x.name} — ${x.description}`
+                      : x.name}
                   </option>
                 ))
               ) : (

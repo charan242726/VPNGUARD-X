@@ -89,7 +89,10 @@ ipcMain.handle('get-interfaces', async () => {
       });
       const lines = stdout.split('\n').filter(l => l.trim().length > 0);
       const interfaces = lines.map(line => {
-        const match = line.match(/^\d+\.(\S+)(?:\s+\[(.*?)\]|\s+(.*))?/);
+        // dumpcap formats entries as ``1. eth0`` or ``2. virbr0 (Bridge)``.
+        // Keep its sequence number out of the device argument passed back to
+        // dumpcap, otherwise Linux correctly rejects "1. eth0" as a device.
+        const match = line.match(/^\s*\d+\.\s*(\S+)(?:\s+\(([^)]*)\)|\s+\[(.*?)\])?\s*$/);
         if (match) {
           return { name: match[1], description: match[2] || match[3] || match[1] };
         }

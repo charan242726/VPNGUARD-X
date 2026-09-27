@@ -130,6 +130,11 @@ def _pdf_dependencies() -> dict[str, Any]:
     return locals()
 
 
+def validate_pdf_support() -> None:
+    """Fail startup validation if the report runtime is incomplete."""
+    _pdf_dependencies()
+
+
 def _pdf_theme() -> tuple[dict[str, Any], dict[str, Any]]:
     lib = _pdf_dependencies()
     colors, ParagraphStyle, getSampleStyleSheet = lib["colors"], lib["ParagraphStyle"], lib["getSampleStyleSheet"]

@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from common.logging import configure_logging
+from common.case_history import list_cases, record_case
 from deployment.runtime import pipeline_for
 from deployment.bundle import load_deployment
 from observability import collect_local_gateway_telemetry
@@ -19,7 +20,7 @@ from reports import write_reports
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="vpnguardx", description="Evidence-bounded IPsec PCAP assessment")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    analyze = subparsers.add_parser("analyze", help="analyze an authorized classic-PCAP capture")
+    analyze = subparsers.add_parser("analyze", help="analyze an authorized PCAP or PCAPNG capture")
     analyze.add_argument("pcap", type=Path)
     analyze.add_argument("--profile", choices=["nist_800_77r1", "ietf_baseline"], default="nist_800_77r1")
     analyze.add_argument("--cooperative-json", type=Path, help="authorized canonical endpoint properties")
@@ -40,6 +41,13 @@ def build_parser() -> argparse.ArgumentParser:
     health = subparsers.add_parser("health", help="validate Python runtime and a verified deployment bundle")
     health.add_argument("--deployment", type=Path, required=True)
     health.add_argument("--allow-demo-deployment", action="store_true")
+    case_record = subparsers.add_parser("case-record", help="add assessment metadata to a local SQLite case index")
+    case_record.add_argument("assessment", type=Path)
+    case_record.add_argument("--database", type=Path, required=True)
+    case_record.add_argument("--source-kind", default="PCAP_ANALYSIS")
+    case_list = subparsers.add_parser("case-list", help="list metadata-only local case index entries")
+    case_list.add_argument("--database", type=Path, required=True)
+    case_list.add_argument("--limit", type=int, default=12)
     return parser
 
 
@@ -68,8 +76,10 @@ def main(argv: list[str] | None = None) -> int:
             capture_metadata=capture_metadata,
             include_packets=args.include_packets,
         )
-        if capture_metadata and bundle.capture["packet_count"] == 0:
-            raise ValueError("live capture contains no IPsec packets; no assessment report was generated")
+        if capture_metadata and not (bundle.capture["ike_sessions"] or bundle.capture["esp_flows"]):
+            raise ValueError(
+                "live capture contains no valid IKE or ESP traffic; no assessment report was generated"
+            )
         paths = write_reports(bundle, args.output)
         print(json.dumps({"run_id": bundle.run["run_id"], "reports": paths}, indent=2))
         return 0
@@ -96,6 +106,12 @@ def main(argv: list[str] | None = None) -> int:
             "platform": platform.platform(),
             "deployment": deployment.to_dict(),
         }, indent=2, sort_keys=True))
+        return 0
+    if args.command == "case-record":
+        print(json.dumps(record_case(args.database, args.assessment, source_kind=args.source_kind), indent=2))
+        return 0
+    if args.command == "case-list":
+        print(json.dumps(list_cases(args.database, limit=args.limit), indent=2))
         return 0
     return 2
 

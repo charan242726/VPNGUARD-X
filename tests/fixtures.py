@@ -100,3 +100,24 @@ def write_synthetic_pcap(path: str | Path, *, natt: bool = False) -> Path:
         blob.extend(packet)
     selected.write_bytes(bytes(blob))
     return selected
+
+
+def write_synthetic_pcapng(path: str | Path, *, natt: bool = False) -> Path:
+    """Write a minimal little-endian PCAPNG fixture with Ethernet packets."""
+    selected = Path(path)
+
+    def block(block_type: int, body: bytes) -> bytes:
+        total = 12 + len(body)
+        return struct.pack("<II", block_type, total) + body + struct.pack("<I", total)
+
+    # Section Header: byte-order magic, version 1.0, unknown section length.
+    blob = bytearray(block(0x0A0D0D0A, struct.pack("<IHHq", 0x1A2B3C4D, 1, 0, -1)))
+    # Interface Description Block: Ethernet, snaplen, end-of-options.
+    blob.extend(block(1, struct.pack("<HHIHH", 1, 0, 65535, 0, 0)))
+    for index, packet in enumerate(synthetic_packets(natt=natt)):
+        timestamp = (1_700_000_000 + index) * 1_000_000 + index * 1_000
+        padded = packet + b"\x00" * ((-len(packet)) % 4)
+        body = struct.pack("<IIIII", 0, timestamp >> 32, timestamp & 0xFFFFFFFF, len(packet), len(packet)) + padded
+        blob.extend(block(6, body))
+    selected.write_bytes(bytes(blob))
+    return selected

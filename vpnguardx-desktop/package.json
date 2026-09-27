@@ -65,6 +65,7 @@
       { "from": "../risk", "to": "backend/risk", "filter": ["**/*.py"] },
       { "from": "../artifacts/deployment_bundle", "to": "backend/artifacts/deployment_bundle" },
       { "from": "../examples/synthetic_demo/synthetic_ikev2_esp.pcap", "to": "backend/artifacts/smoke_demo/synthetic_ikev2_esp.pcap" },
+      { "from": "../artifacts/demo_extensions", "to": "backend/artifacts/demo_extensions", "filter": ["**/*.pcap"] },
       { "from": "backend-runtime/python_packages", "to": "backend/python_packages" }
     ],
     "linux": {

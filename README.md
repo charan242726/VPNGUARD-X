@@ -17,7 +17,7 @@ No empirical accuracy value is hard-coded or claimed by the source repository. A
 
 ## What is implemented
 
-- Dependency-free classic-PCAP reader and Ethernet/Linux-cooked/raw-IP decoder.
+- Dependency-free classic-PCAP and standard-PCAPNG reader, plus Ethernet/Linux-cooked/raw-IP decoder.
 - Conservative IPv4/IPv6, UDP 500/4500, IKEv2, native ESP, ESP-in-UDP, NAT keepalive, and limited IKEv1 identification.
 - Visible IKE_SA_INIT proposal/selection and KE parsing; protected payload boundary enforcement.
 - IKE session and directional ESP/SPI reconstruction with retransmission, duplicate, and observed-gap accounting.
@@ -78,6 +78,24 @@ acknowledges authorization, then performs `capture → analyze → report` using
 IKE/ESP filter. For the supplied demo bundle, it launches the verified bundle at
 `artifacts/deployment_bundle` with its explicit `SYNTHETIC_SOFTWARE_DEMO` label. Do not
 present its predictions as benchmark-validated for a new AES-128 or real-messaging trace.
+
+The Live Sensor also offers an **optional IPsec Watch Mode**. It is off by default,
+requires the same authorization acknowledgement and selected interface, and watches only
+IKE/ESP/NAT-T with the fixed filter. When IPsec traffic is detected, the operator stops
+the watch and chooses to assess the temporary capture. It is not a silent login daemon and
+does not create a report when no IPsec evidence is found.
+
+### Local storage and privacy
+
+VPNGUARD-X keeps PCAP analysis and report generation offline by default. The desktop console
+uses one optional local SQLite case index containing only assessment metadata (run ID, timestamp,
+source type, capture hash, packet count, risk range, and inferred application label). It never
+copies PCAP payloads, keys, secrets, or the evidence body into this index. PCAPs, evidence JSON,
+and reports remain local files chosen or exported by the analyst; the UI does not upload them.
+
+For a multi-user or enterprise deployment, add an authenticated database/object-storage
+layer with encryption, audit logging, retention/deletion controls, and tenant isolation;
+that is deliberately outside this single-analyst prototype.
 
 ```bash
 cd vpnguardx-desktop

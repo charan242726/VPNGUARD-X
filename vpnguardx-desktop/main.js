@@ -67,6 +67,10 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  // Watch Mode is never a background daemon. Stop a temporary collection if
+  // the analyst closes the console.
+  if (watchProcess) watchProcess.kill('SIGINT');
+  if (captureProcess) captureProcess.kill('SIGINT');
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -100,7 +104,7 @@ ipcMain.handle('select-pcap', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: 'Select an authorized IPsec capture',
     properties: ['openFile'],
-    filters: [{ name: 'Classic PCAP', extensions: ['pcap', 'cap'] }]
+    filters: [{ name: 'Packet captures', extensions: ['pcap', 'pcapng', 'cap'] }]
   });
   return canceled ? null : filePaths[0];
 });
@@ -134,9 +138,69 @@ ipcMain.handle('select-cooperative-telemetry', async () => {
 });
 
 let captureProcess = null;
+let watchProcess = null;
+let watchState = { active: false, detected: false, interface: null, pcapPath: null, startedAt: null, error: null };
+
+// Watch Mode is explicit and metadata-filtered: it watches only IKE/ESP/NAT-T
+// on the operator-selected interface. It never starts automatically at login.
+ipcMain.handle('start-ipsec-watch', async (event, iface) => {
+  if (watchProcess) throw new Error('IPsec Watch is already active. Stop it before selecting another interface.');
+  if (captureProcess) throw new Error('A bounded capture is active. Stop it before enabling IPsec Watch.');
+  if (typeof iface !== 'string' || !iface) throw new Error('Select a valid capture interface.');
+  const pcapPath = path.join(app.getPath('temp'), `vpnguardx-watch-${Date.now()}.pcap`);
+  const filter = 'udp port 500 or udp port 4500 or ip proto 50 or ip6 proto 50';
+  const process = spawn('dumpcap', ['-i', iface, '-s', '0', '-f', filter, '-w', pcapPath, '-F', 'pcap']);
+  watchProcess = process;
+  watchState = { active: true, detected: false, interface: iface, pcapPath, startedAt: new Date().toISOString(), error: null };
+  process.on('error', error => { watchState = { ...watchState, active: false, error: `Unable to start dumpcap: ${error.message}` }; watchProcess = null; });
+  process.on('close', code => {
+    if (watchProcess === process) watchProcess = null;
+    watchState = { ...watchState, active: false, error: code && code !== 0 ? `IPsec Watch stopped (dumpcap code ${code}).` : watchState.error };
+  });
+  const detectTimer = setInterval(() => {
+    if (watchProcess !== process) return clearInterval(detectTimer);
+    // This only means the fixed BPF has candidate packets. Protocol parsing on
+    // Stop & assess is the authoritative verification step.
+    try { if (fs.existsSync(pcapPath) && fs.statSync(pcapPath).size > 24) watchState = { ...watchState, detected: true }; } catch { /* capture can be closing */ }
+  }, 1000);
+  return { ...watchState, filter };
+});
+
+ipcMain.handle('get-ipsec-watch-status', async () => ({ ...watchState }));
+
+ipcMain.handle('stop-ipsec-watch', async () => {
+  const process = watchProcess;
+  if (!process) return { ...watchState, active: false };
+  return new Promise(resolve => {
+    const finish = () => {
+      const result = { ...watchState, active: false };
+      if (watchProcess === process) watchProcess = null;
+      watchState = result;
+      if (result.detected && result.pcapPath && fs.existsSync(result.pcapPath)) {
+        const manifest = {
+          interface: result.interface,
+          filter: 'udp port 500 or udp port 4500 or ip proto 50 or ip6 proto 50',
+          duration_seconds: Math.max(1, Math.round((Date.now() - Date.parse(result.startedAt)) / 1000)),
+          started_at_utc: result.startedAt,
+          completed_at_utc: new Date().toISOString(),
+          packet_count: null,
+          capture_sha256: crypto.createHash('sha256').update(fs.readFileSync(result.pcapPath)).digest('hex'),
+          authorization_acknowledged: true,
+          active_probe_performed: false
+        };
+        fs.writeFileSync(`${result.pcapPath}.manifest.json`, JSON.stringify(manifest, null, 2));
+      }
+      resolve(result);
+    };
+    process.once('close', finish);
+    process.kill('SIGINT');
+  });
+});
 
 ipcMain.handle('start-capture', async (event, iface, durationSeconds) => {
   return new Promise((resolve, reject) => {
+    if (watchProcess) return reject(new Error('IPsec Watch is active. Stop it before starting a bounded capture.'));
+    if (captureProcess) return reject(new Error('A bounded capture is already active.'));
     if (!Number.isInteger(durationSeconds) || durationSeconds < 5 || durationSeconds > 3600) {
       return reject(new Error('Capture duration must be a whole number between 5 and 3600 seconds.'));
     }
@@ -231,11 +295,49 @@ ipcMain.handle('run-analysis', async (event, pcapPath, telemetryPath = null) => 
         try {
           const data = fs.readFileSync(reportPath, 'utf8');
           latestReportDirectory = outputDirectory;
-          resolve(JSON.parse(data));
+          const assessment = JSON.parse(data);
+          // Case history is helpful, but never prevents delivery of a valid
+          // assessment if the local index is unavailable.
+          const indexer = spawnBackend(backendDir, [
+            'vpnguardx.py', 'case-record', reportPath,
+            '--database', path.join(app.getPath('userData'), 'cases.sqlite3'),
+            '--source-kind', telemetryPath ? 'CORRELATED_CAPTURE' : 'PCAP_OR_LIVE_CAPTURE'
+          ]);
+          let delivered = false;
+          const deliverAssessment = () => {
+            if (!delivered) {
+              delivered = true;
+              resolve(assessment);
+            }
+          };
+          // The index is strictly non-blocking for availability, but wait for
+          // its short local process so the Reports page immediately reflects a
+          // completed assessment.
+          indexer.once('close', deliverAssessment);
+          indexer.once('error', deliverAssessment);
         } catch (err) {
           reject(new Error(`Could not read assessment report: ${err.message}`));
         }
       }
+    });
+  });
+});
+
+ipcMain.handle('get-case-history', async () => {
+  const backendDir = backendDirectory();
+  return new Promise((resolve, reject) => {
+    const reader = spawnBackend(backendDir, [
+      'vpnguardx.py', 'case-list', '--database', path.join(app.getPath('userData'), 'cases.sqlite3'), '--limit', '12'
+    ]);
+    let stdout = '';
+    let stderr = '';
+    reader.stdout.on('data', data => { stdout += data.toString(); });
+    reader.stderr.on('data', data => { stderr += data.toString(); });
+    reader.on('error', error => reject(new Error(`Local case index unavailable: ${error.message}`)));
+    reader.on('close', code => {
+      if (code !== 0) return reject(new Error(`Local case index unavailable: ${stderr || 'unknown error'}`));
+      try { resolve(JSON.parse(stdout)); }
+      catch { reject(new Error('Local case index returned invalid JSON.')); }
     });
   });
 });

@@ -9,7 +9,7 @@ from parser import analyze_pcap
 from pipeline import VPNGuardXPipeline
 from reports import write_reports
 
-from tests.fixtures import write_synthetic_pcap
+from tests.fixtures import write_synthetic_pcap, write_synthetic_pcapng
 
 
 class ParserPipelineTests(unittest.TestCase):
@@ -34,6 +34,15 @@ class ParserPipelineTests(unittest.TestCase):
         self.assertEqual([packet.packet_kind for packet in analysis.packets], ["IKE_NATT", "IKE_NATT", "ESP_UDP", "ESP_UDP"])
         self.assertEqual(analysis.evidence.best("encapsulation").value, "UDP_ENCAPSULATED_ESP")
         self.assertTrue(analysis.evidence.best("natt.non_esp_marker").value)
+
+    def test_pcapng_input_matches_classic_pcap(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = write_synthetic_pcapng(Path(directory) / "synthetic.pcapng")
+            analysis = analyze_pcap(path)
+        self.assertEqual(analysis.packet_count, 4)
+        self.assertEqual([packet.packet_kind for packet in analysis.packets], ["IKE", "IKE", "ESP_NATIVE", "ESP_NATIVE"])
+        self.assertEqual(len(analysis.ike_sessions), 1)
+        self.assertEqual(len(analysis.esp_flows), 1)
 
     def test_full_pipeline_and_reports(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

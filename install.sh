@@ -48,6 +48,12 @@ mkdir -p "$(dirname "$APP_VENV")"
 "$APP_VENV/bin/python" -m pip install -e '.[ml]'
 npm --prefix vpnguardx-desktop install
 
+# Make the desktop menu launch this checkout, not an older similarly named
+# prototype that may be installed elsewhere on the workstation.
+DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+mkdir -p "$DESKTOP_DIR"
+sed "s|@ROOT_DIR@|$ROOT_DIR|g" "$ROOT_DIR/packaging/vpnguardx.desktop.in" > "$DESKTOP_DIR/vpnguardx.desktop"
+
 echo
 echo "Optional authorized live-capture capability: only dumpcap receives CAP_NET_RAW/CAP_NET_ADMIN."
 read -r -p "Grant this capability now? [y/N] " grant_capture
@@ -62,4 +68,5 @@ echo "Installation complete. Start the desktop prototype with:"
 echo "  ./scripts/launch-desktop.sh"
 echo "For a Debian package: cd vpnguardx-desktop && npm run dist:deb"
 echo "Python runtime installed at: $APP_VENV"
+echo "Desktop launcher installed at: $DESKTOP_DIR/vpnguardx.desktop"
 echo "Live capture is limited to interfaces you are authorized to monitor."

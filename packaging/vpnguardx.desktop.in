@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=VPNGUARD-X
+Comment=Evidence-bounded IPsec VPN security assessment
+Exec=@ROOT_DIR@/scripts/launch-desktop.sh
+Icon=network-vpn
+Terminal=false
+Type=Application
+Categories=Network;Security;
+StartupNotify=true

@@ -38,7 +38,8 @@ def record_case(database_path: str | Path, assessment_path: str | Path, *, sourc
     risk = assessment.get("risk") or {}
     application = assessment.get("application") or {}
     report_directory = str(Path(assessment_path).resolve().parent)
-    with _connection(Path(database_path)) as connection:
+    connection = _connection(Path(database_path))
+    try:
         connection.execute(
             """INSERT OR REPLACE INTO cases
                (run_id, created_at_utc, source_kind, capture_sha256, packet_count,
@@ -56,6 +57,9 @@ def record_case(database_path: str | Path, assessment_path: str | Path, *, sourc
                 report_directory,
             ),
         )
+        connection.commit()
+    finally:
+        connection.close()
     return {"run_id": run_id, "database": str(Path(database_path).resolve())}
 
 
@@ -65,12 +69,15 @@ def list_cases(database_path: str | Path, *, limit: int = 25) -> list[dict[str, 
     path = Path(database_path)
     if not path.exists():
         return []
-    with _connection(path) as connection:
+    connection = _connection(path)
+    try:
         rows = connection.execute(
             """SELECT run_id, created_at_utc, source_kind, capture_sha256, packet_count,
                       risk_minimum, risk_maximum, application_label, report_directory
                  FROM cases ORDER BY created_at_utc DESC LIMIT ?""",
             (limit,),
         ).fetchall()
+    finally:
+        connection.close()
     columns = ("run_id", "created_at_utc", "source_kind", "capture_sha256", "packet_count", "risk_minimum", "risk_maximum", "application_label", "report_directory")
     return [dict(zip(columns, row, strict=True)) for row in rows]

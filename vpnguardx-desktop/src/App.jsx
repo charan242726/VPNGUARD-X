@@ -1282,7 +1282,7 @@ export default function App() {
             }}
           >
             <Activity size={17} />
-            Read local gateway
+            Read local gateway (admin)
           </button>
           {telemetry && (
             <button
@@ -1339,9 +1339,10 @@ export default function App() {
           ))}
         </div>
         <p className="fine-print">
-          Local collection uses fixed read-only strongSwan VICI and Linux XFRM
-          commands. Future vendor connectors should emit the same normalized
-          evidence JSON.
+          Local collection asks for administrator approval because strongSwan
+          VICI and Linux XFRM SA state are protected. It runs fixed read-only
+          commands only; future vendor connectors should emit the same
+          normalized evidence JSON.
         </p>
       </section>
       <section className="card wide correlation-card">

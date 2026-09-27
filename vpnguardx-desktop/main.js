@@ -371,14 +371,26 @@ ipcMain.handle('collect-local-gateway-telemetry', async () => {
   const backendDir = backendDirectory();
   const outputPath = path.join(app.getPath('temp'), `vpnguardx-gateway-${Date.now()}.json`);
   return new Promise((resolve, reject) => {
-    const collector = spawnBackend(backendDir, [
-      'vpnguardx.py', 'telemetry', '--output', outputPath, '--i-am-authorized'
-    ]);
+    const uid = typeof process.getuid === 'function' ? process.getuid() : null;
+    const gid = typeof process.getgid === 'function' ? process.getgid() : null;
+    if (!Number.isInteger(uid) || !Number.isInteger(gid)) {
+      return reject(new Error('Local gateway collection is supported only on Linux desktop sessions.'));
+    }
+    // Linux XFRM state and the strongSwan VICI socket are normally protected
+    // from desktop users.  This explicit Polkit action runs a fixed helper;
+    // it cannot receive arbitrary commands or read configuration/key files.
+    const python = pythonExecutable(backendDir);
+    const helper = path.join(backendDir, 'observability', 'privileged_telemetry.py');
+    const pythonPath = [path.join(backendDir, 'python_packages'), backendDir].join(path.delimiter);
+    const collector = spawn('pkexec', [
+      '/usr/bin/env', `PYTHONPATH=${pythonPath}`, python, helper,
+      '--output', outputPath, '--uid', String(uid), '--gid', String(gid)
+    ], { cwd: backendDir });
     let stderr = '';
     collector.stderr.on('data', data => { stderr += data.toString(); });
     collector.on('error', error => reject(new Error(`Unable to start Python telemetry runtime: ${error.message}`)));
     collector.on('close', code => {
-      if (code !== 0) return reject(new Error(`Gateway telemetry unavailable: ${stderr || 'no readable local IPsec SA state.'}`));
+      if (code !== 0) return reject(new Error(`Gateway telemetry unavailable: ${stderr || 'Administrator approval was cancelled or no readable local IPsec SA state exists.'}`));
       try {
         const data = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
         if (containsSensitiveKey(data)) throw new Error('Collector returned prohibited secret/key-material fields.');

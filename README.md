@@ -81,9 +81,9 @@ present its predictions as benchmark-validated for a new AES-128 or real-messagi
 
 The Live Sensor also offers an **optional IPsec Watch Mode**. It is off by default,
 requires the same authorization acknowledgement and selected interface, and watches only
-IKE/ESP/NAT-T with the fixed filter. When IPsec traffic is detected, the operator stops
-the watch and chooses to assess the temporary capture. It is not a silent login daemon and
-does not create a report when no IPsec evidence is found.
+IKE/ESP/NAT-T with the fixed filter. When candidate packets are buffered, the operator stops
+the watch and the parser verifies IKE/ESP before creating an assessment. It is not a silent
+login daemon and does not create a report when no valid IPsec evidence is found.
 
 ### Local storage and privacy
 

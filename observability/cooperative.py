@@ -120,7 +120,10 @@ def parse_xfrm_state(text: str) -> list[dict[str, Any]]:
         match = re.search(r"proto (esp|ah) spi (0x[0-9a-fA-F]+).*mode (tunnel|transport)", line)
         if match:
             current.update(protocol=match.group(1).upper(), spi=match.group(2).lower(), mode=match.group(3).upper())
-        match = re.search(r"replay-window\s+(\d+)", line)
+        # The SA header reports ``replay-window N seq ...``.  Do not treat
+        # the later statistics counter (``replay-window 0 replay ...``) as
+        # configuration: it is a count of rejected packets, not the window.
+        match = re.match(r"replay-window\s+(\d+)\s+seq\b", line)
         if match:
             current["legacy_replay_window"] = int(match.group(1))
         # iproute2 prints the effective extended replay bitmap as
@@ -238,8 +241,16 @@ def cooperative_evidence_from_xfrm(text: str) -> EvidenceLedger:
     if modes:
         normalized["child.mode"] = modes[0] if len(modes) == 1 else modes
     if replay_windows:
-        normalized["child.replay_window_size"] = replay_windows[0] if len(replay_windows) == 1 else replay_windows
-        normalized["child.anti_replay_enabled"] = any(value > 0 for value in replay_windows)
+        # A gateway has one outbound state (normally a zero receive window)
+        # and one or more inbound states.  Report effective receive windows;
+        # including the outbound zero would falsely make a protected SA look
+        # ambiguous or disabled.
+        effective_windows = [value for value in replay_windows if value > 0]
+        normalized["child.anti_replay_enabled"] = bool(effective_windows)
+        selected_windows = effective_windows or replay_windows
+        normalized["child.replay_window_size"] = (
+            selected_windows[0] if len(selected_windows) == 1 else selected_windows
+        )
     if protocols:
         normalized["child.protocol"] = protocols[0] if len(protocols) == 1 else protocols
     normalized["endpoint.xfrm_state_count"] = len(states)

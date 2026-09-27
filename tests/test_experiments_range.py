@@ -188,6 +188,17 @@ class ExperimentRangeTests(unittest.TestCase):
         self.assertEqual(ledger.best("child.replay_window_size").value, 32)
         self.assertTrue(ledger.best("child.anti_replay_enabled").value)
 
+    def test_xfrm_statistics_counter_does_not_override_sa_replay_window(self) -> None:
+        text = """src 10.0.0.2 dst 10.0.0.1
+        proto esp spi 0x00000001 reqid 1 mode tunnel
+        replay-window 32 seq 0x00000000 flag af-unspec
+        stats:
+          replay-window 0 replay 0 failed 0
+        """
+        ledger = cooperative_evidence_from_xfrm(text)
+        self.assertEqual(ledger.best("child.replay_window_size").value, 32)
+        self.assertTrue(ledger.best("child.anti_replay_enabled").value)
+
 
 if __name__ == "__main__":
     unittest.main()

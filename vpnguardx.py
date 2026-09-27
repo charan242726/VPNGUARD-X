@@ -14,7 +14,7 @@ from deployment.runtime import pipeline_for
 from deployment.bundle import load_deployment
 from observability import collect_local_gateway_telemetry
 from parser import capture_live
-from reports import write_reports
+from reports import validate_pdf_support, write_reports
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -100,6 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "health":
         deployment = load_deployment(args.deployment, allow_demo=args.allow_demo_deployment)
+        validate_pdf_support()
         print(json.dumps({
             "status": "ok",
             "python": sys.version.split()[0],

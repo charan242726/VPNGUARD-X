@@ -177,14 +177,14 @@ class ExperimentRangeTests(unittest.TestCase):
         self.assertEqual(ledger.best("sa.remaining_lifetime_seconds").value, 3588)
         self.assertIsNone(ledger.best("sa.configured_lifetime"))
 
-    def test_vici_active_child_without_dh_group_reports_pfs_disabled(self) -> None:
+    def test_vici_active_child_without_dh_group_leaves_pfs_unknown(self) -> None:
         text = (
             "list-sa event {vgx {version=2 dh-group=ECP_256 "
             "child-sas {protected-1 {state=INSTALLED mode=TUNNEL protocol=ESP "
             "encr-alg=AES_GCM_16 encr-keysize=256}}}}"
         )
         ledger = cooperative_evidence_from_swanctl(text)
-        self.assertEqual(ledger.best("child.pfs_group").value, "NONE")
+        self.assertIsNone(ledger.best("child.pfs_group"))
 
     def test_xfrm_extended_replay_window_takes_precedence(self) -> None:
         text = """src 10.0.0.1 dst 10.0.0.2

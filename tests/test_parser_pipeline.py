@@ -8,11 +8,17 @@ from pathlib import Path
 from parser import analyze_pcap
 from pipeline import VPNGuardXPipeline
 from reports import write_reports
+from reports.generator import _risk_score, _risk_text
 
 from tests.fixtures import write_synthetic_pcap, write_synthetic_pcapng
 
 
 class ParserPipelineTests(unittest.TestCase):
+    def test_unbounded_risk_is_not_rendered_as_low_posture(self) -> None:
+        data = {"risk": {"status": "NOT_EVALUABLE", "minimum": None, "maximum": None}}
+        self.assertIsNone(_risk_score(data))
+        self.assertEqual(_risk_text(data), "Not rated — insufficient supported configuration evidence")
+
     def test_ike_and_esp_reconstruction(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = write_synthetic_pcap(Path(directory) / "synthetic.pcap")

@@ -215,6 +215,11 @@ def cooperative_evidence_from_swanctl(text: str) -> EvidenceLedger:
         normalized["child.integrity"] = value
     if value := _normalized_ke(child_fields):
         normalized["child.pfs_group"] = value
+    elif child_body is not None and _one(child_fields.get("state")) == "INSTALLED":
+        # VICI emits a CHILD-SA ``dh-group`` only when a fresh CHILD-SA KE was
+        # negotiated.  For a single active CHILD-SA, its explicit absence is
+        # therefore authoritative evidence that PFS is disabled.
+        normalized["child.pfs_group"] = "NONE"
     if value := _one(child_fields.get("esn")):
         lowered = value.lower()
         if lowered in {"0", "1", "no", "yes", "false", "true"}:

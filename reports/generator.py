@@ -46,14 +46,18 @@ def _evidence_value(evidence: dict[str, dict[str, Any]], property_name: str) -> 
     return item.get("value"), item.get("status", "UNKNOWN / UNOBSERVABLE"), item.get("source", "—")
 
 
-def _risk_score(data: dict[str, Any]) -> int:
+def _risk_score(data: dict[str, Any]) -> int | None:
     risk = data.get("risk", {})
-    minimum = float(risk.get("minimum") or 0)
-    maximum = float(risk.get("maximum") or minimum)
+    if risk.get("status") != "BOUNDED" or risk.get("minimum") is None or risk.get("maximum") is None:
+        return None
+    minimum = float(risk["minimum"])
+    maximum = float(risk["maximum"])
     return max(0, min(100, round((1 - ((minimum + maximum) / 2)) * 100)))
 
 
 def _risk_label(data: dict[str, Any]) -> str:
+    if _risk_score(data) is None:
+        return "NOT RATED"
     maximum = float(data.get("risk", {}).get("maximum") or 0)
     if maximum >= 0.65:
         return "HIGH"
@@ -62,10 +66,47 @@ def _risk_label(data: dict[str, Any]) -> str:
     return "LOW"
 
 
+def _risk_text(data: dict[str, Any]) -> str:
+    score = _risk_score(data)
+    return f"{score}/100 ({_risk_label(data)})" if score is not None else "Not rated — insufficient supported configuration evidence"
+
+
+def _risk_range_text(data: dict[str, Any]) -> str:
+    """Render a risk interval only when the evidence engine actually bounded it."""
+    risk = data.get("risk", {})
+    if risk.get("status") != "BOUNDED" or risk.get("minimum") is None or risk.get("maximum") is None:
+        return "Not rated — no evidence-supported configuration candidate set"
+    return f"{float(risk['minimum']) * 100:.1f}% – {float(risk['maximum']) * 100:.1f}%"
+
+
+_ASSURANCE_PROPERTIES = [
+    ("ike.version", "IKE version"),
+    ("ike.selected_encryption", "IKE encryption"),
+    ("ike.selected_prf", "IKE PRF"),
+    ("ike.initial_ke_group", "DH group"),
+    ("child.mode", "IPsec mode"),
+    ("child.encryption", "ESP encryption"),
+    ("child.pfs_group", "PFS"),
+    ("child.anti_replay_enabled", "Replay protection"),
+    ("child.replay_window_size", "Replay window"),
+    ("sa.remaining_lifetime_seconds", "SA lifetime remaining"),
+]
+
+
 def _recommendations(data: dict[str, Any]) -> list[dict[str, str]]:
     """Return only evidence-supported actions, never a generic crypto checklist."""
     items: list[dict[str, str]] = []
     seen: set[str] = set()
+    flags = set(data.get("cgii", {}).get("flags", []))
+    if "MULTI_SESSION_CAPTURE_NOT_SUPPORTED_FOR_AGGREGATE_INFERENCE" in flags:
+        action = "Re-run a capture containing one completed IKE SA, or select one IKE SA before assessment."
+        seen.add(action)
+        items.append({
+            "priority": "HIGH",
+            "title": "Resolve assessment scope",
+            "action": action,
+            "basis": "Multiple independently negotiated IKE sessions were captured. Their protected CHILD-SA settings must not be merged into one security conclusion.",
+        })
     for finding in data.get("policy", {}).get("findings", []):
         status = finding.get("status")
         remediation = finding.get("remediation")
@@ -90,9 +131,15 @@ def _recommendations(data: dict[str, Any]) -> list[dict[str, str]]:
     observed = _evidence_by_property(data)
     unavailable = [name for name in missing if not observed.get(name) or observed[name].get("value") is None]
     if unavailable:
+        telemetry_connected = any(record.get("source") in {"GATEWAY_TELEMETRY", "STRONGSWAN_VICI", "LINUX_XFRM"} for record in data.get("capture", {}).get("evidence", []))
+        action = (
+            "Validate the unavailable SA controls in the gateway policy; current gateway telemetry does not expose every required field."
+            if telemetry_connected
+            else "Connect approved read-only gateway telemetry before changing policy for hidden SA controls."
+        )
         items.append({"priority": "MEDIUM", "title": "Complete endpoint assurance",
-                      "action": "Connect approved read-only gateway telemetry before changing policy for hidden SA controls.",
-                      "basis": "The capture cannot prove " + ", ".join(x.replace("_", " ") for x in unavailable) + "."})
+                      "action": action,
+                      "basis": "Current assessment evidence cannot establish " + ", ".join(x.replace("_", " ") for x in unavailable) + "."})
     return items or [{"priority": "INFO", "title": "No corrective change established",
                       "action": "Retain the current policy and continue periodic evidence-backed review.",
                       "basis": "No certain or possible policy violation was established for the supported candidate set."}]
@@ -100,7 +147,7 @@ def _recommendations(data: dict[str, Any]) -> list[dict[str, str]]:
 
 def _technical_markdown(data: dict[str, Any]) -> str:
     capture, cgii, risk = data["capture"], data["cgii"], data["risk"]
-    lines = ["# VPNGUARD-X Technical Assessment", "", f"**Run ID:** `{data['run']['run_id']}`  ", f"**Mode:** `{data['mode']}`  ", f"**Capture SHA-256:** `{capture['sha256']}`  ", "**Empirical benchmark metrics:** TBD — requires experiment", "", "## Assurance summary", "", f"- Security posture: {_risk_score(data)}/100 ({_risk_label(data)})", f"- CGII status: `{cgii['status']}`; feasible candidates: {cgii['feasible_candidate_count']} of {cgii['total_candidates']}", f"- Evidence completeness: {_fmt(cgii['evidence_completeness'])}", f"- Risk interval: [{_fmt(risk['minimum'])}, {_fmt(risk['maximum'])}] (policy loss, not compromise probability)", "", "## Evidence ledger", "", "| Property | Value | Status | Source | Rationale |", "|---|---|---|---|---|"]
+    lines = ["# VPNGUARD-X Technical Assessment", "", f"**Run ID:** `{data['run']['run_id']}`  ", f"**Mode:** `{data['mode']}`  ", f"**Capture SHA-256:** `{capture['sha256']}`  ", "**Empirical benchmark metrics:** TBD — requires experiment", "", "## Assurance summary", "", f"- Security posture: {_risk_text(data)}", f"- CGII status: `{cgii['status']}`; feasible candidates: {cgii['feasible_candidate_count']} of {cgii['total_candidates']}", f"- Evidence completeness: {_fmt(cgii['evidence_completeness'])}", f"- Risk interval: [{_fmt(risk['minimum'])}, {_fmt(risk['maximum'])}] (policy loss, not compromise probability)", "", "## Evidence ledger", "", "| Property | Value | Status | Source | Rationale |", "|---|---|---|---|---|"]
     for record in capture["evidence"]:
         lines.append(f"| `{record['property_name']}` | {_fmt(record['value'])} | `{record['status']}` | `{record['source']}` | {str(record['rationale']).replace('|', '\\|')} |")
     lines.extend(["", "## Policy findings", "", "| Rule | Status | Severity | Recommended action |", "|---|---|---|---|"])
@@ -115,7 +162,7 @@ def _technical_markdown(data: dict[str, Any]) -> str:
 
 def _executive_markdown(data: dict[str, Any]) -> str:
     cgii, risk, summary = data["cgii"], data["risk"], data["policy"]["summary"]
-    return "\n".join(["# VPNGUARD-X Executive Summary", "", f"**Security posture:** {_risk_score(data)}/100 ({_risk_label(data)} policy exposure)", "", f"Capture `{data['capture']['sha256'][:12]}…` was assessed in **{data['mode']}** mode.", f"Evidence supports **{len(cgii['prediction_set'])} candidate configuration(s)**. The bounded policy-risk interval is **[{_fmt(risk['minimum'])}, {_fmt(risk['maximum'])}]**; this is normalized policy loss, not compromise probability.", "", f"Policy findings: {summary['CERTAIN_VIOLATION']} certain, {summary['POSSIBLE_VIOLATION']} possible, and {summary['NOT_EVALUABLE']} not evaluable.", "", "## Recommended next actions", "", *[f"- **{item['priority']}:** {item['action']}" for item in _recommendations(data)], "", "No protected VPN parameter is reported as observed without packet or authorized endpoint evidence. Empirical accuracy and benchmark results: **TBD — requires experiment**.", ""])
+    return "\n".join(["# VPNGUARD-X Executive Summary", "", f"**Security posture:** {_risk_text(data)}", "", f"Capture `{data['capture']['sha256'][:12]}…` was assessed in **{data['mode']}** mode.", f"Evidence supports **{len(cgii['prediction_set'])} candidate configuration(s)**. The bounded policy-risk interval is **[{_fmt(risk['minimum'])}, {_fmt(risk['maximum'])}]**; this is normalized policy loss, not compromise probability.", "", f"Policy findings: {summary['CERTAIN_VIOLATION']} certain, {summary['POSSIBLE_VIOLATION']} possible, and {summary['NOT_EVALUABLE']} not evaluable.", "", "## Recommended next actions", "", *[f"- **{item['priority']}:** {item['action']}" for item in _recommendations(data)], "", "No protected VPN parameter is reported as observed without packet or authorized endpoint evidence. Empirical accuracy and benchmark results: **TBD — requires experiment**.", ""])
 
 
 def _pdf_dependencies() -> dict[str, Any]:
@@ -192,10 +239,11 @@ def _cover(lib: dict[str, Any], theme: dict[str, Any], data: dict[str, Any], tit
     capture, run = data["capture"], data["run"]
     collection = capture.get("collection", {})
     score, label = _risk_score(data), _risk_label(data)
-    cards = [[_paragraph(lib, styles, f"<b>{score}/100</b><br/><font size='7' color='#667085'>SECURITY POSTURE</font>", "VgxCardValue"), _paragraph(lib, styles, f"<b>{label}</b><br/><font size='7' color='#667085'>POLICY EXPOSURE</font>", "VgxCardValue"), _paragraph(lib, styles, f"<b>{capture.get('packet_count', 0):,}</b><br/><font size='7' color='#667085'>PACKETS INSPECTED</font>", "VgxCardValue")]]
+    score_value = f"{score}/100" if score is not None else "NOT RATED"
+    cards = [[_paragraph(lib, styles, f"<b>{score_value}</b><br/><font size='7' color='#667085'>SECURITY POSTURE</font>", "VgxCardValue"), _paragraph(lib, styles, f"<b>{label}</b><br/><font size='7' color='#667085'>POLICY EXPOSURE</font>", "VgxCardValue"), _paragraph(lib, styles, f"<b>{capture.get('packet_count', 0):,}</b><br/><font size='7' color='#667085'>PACKETS INSPECTED</font>", "VgxCardValue")]]
     card = lib["Table"](cards, colWidths=[56 * lib["mm"], 56 * lib["mm"], 56 * lib["mm"]])
     card.setStyle(lib["TableStyle"]([("BACKGROUND", (0, 0), (-1, -1), palette["soft"]), ("BOX", (0, 0), (-1, -1), 0.5, palette["line"]), ("INNERGRID", (0, 0), (-1, -1), 0.5, palette["line"]), ("TOPPADDING", (0, 0), (-1, -1), 12), ("BOTTOMPADDING", (0, 0), (-1, -1), 12), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-    return [lib["Spacer"](1, 22 * lib["mm"]), _paragraph(lib, styles, "VPNGUARD-X / IPSEC ASSURANCE", "VgxH2"), _paragraph(lib, styles, title, "VgxTitle"), _paragraph(lib, styles, subtitle, "VgxSubtitle"), card, lib["Spacer"](1, 12 * lib["mm"]), _paragraph(lib, styles, "Assessment identity", "VgxH1"), _table(lib, theme, [["Run ID", run.get("run_id"), "Completed", run.get("completed_at_utc", "—")], ["Assessment mode", data.get("mode"), "Policy profile", run.get("profile_id", "—")], ["Capture interface", collection.get("interface", "PCAP upload"), "Capture window", f"{collection.get('duration_seconds', '—')} sec" if collection else "—"], ["Capture SHA-256", capture.get("sha256", "—"), "Product version", run.get("product_version", "—")]], [28 * lib["mm"], 60 * lib["mm"], 28 * lib["mm"], 58 * lib["mm"]], header=False), lib["Spacer"](1, 9 * lib["mm"]), _paragraph(lib, styles, "Important interpretation", "VgxH2"), _paragraph(lib, styles, "This report measures policy exposure over evidence-supported IPsec configuration candidates. It is not a compromise determination. Encrypted content, secret material, and hidden endpoint-only SA fields are never represented as packet-observed facts.")]
+    return [lib["Spacer"](1, 22 * lib["mm"]), _paragraph(lib, styles, "VPNGUARD-X / IPSEC ASSURANCE", "VgxH2"), _paragraph(lib, styles, title, "VgxTitle"), _paragraph(lib, styles, subtitle, "VgxSubtitle"), card, lib["Spacer"](1, 12 * lib["mm"]), _paragraph(lib, styles, "Assessment identity", "VgxH1"), _table(lib, theme, [["Run ID", run.get("run_id"), "Completed", run.get("completed_at_utc", "—")], ["Assessment mode", data.get("mode"), "Policy profile", run.get("profile_id", "—")], ["Capture interface", collection.get("interface", "PCAP upload"), "Capture window", f"{collection.get('duration_seconds', '—')} sec" if collection else "—"], ["Capture SHA-256", capture.get("sha256", "—"), "Product version", run.get("product_version", "—")]], [28 * lib["mm"], 60 * lib["mm"], 28 * lib["mm"], 58 * lib["mm"]], header=False), lib["Spacer"](1, 9 * lib["mm"]), _paragraph(lib, styles, "Important interpretation", "VgxH2"), _paragraph(lib, styles, "This report measures policy exposure over evidence-supported IPsec configuration candidates; it is not a compromise determination. Encrypted content, secret material, and hidden endpoint-only SA fields are never packet-observed. AI traffic confidence is an encrypted-flow inference, not proof of payload ground truth.")]
 
 
 def _executive_pdf(data: dict[str, Any], destination: Path) -> None:
@@ -205,9 +253,10 @@ def _executive_pdf(data: dict[str, Any], destination: Path) -> None:
     story = _cover(lib, theme, data, "Executive security assessment", "Decision-ready IPsec posture, exposure, and next actions")
     story += [lib["PageBreak"](), _paragraph(lib, styles, "Executive overview", "VgxH1")]
     cgii, policy, risk = data["cgii"], data["policy"], data["risk"]
-    story.append(_table(lib, theme, [["Assessment area", "Result"], ["Configuration resolution", f"{len(cgii.get('prediction_set', []))} supported candidate(s) of {cgii.get('total_candidates', 0)}"], ["Evidence completeness", f"{float(cgii.get('evidence_completeness') or 0) * 100:.0f}%"], ["Policy-risk range", f"{float(risk.get('minimum') or 0) * 100:.1f}% – {float(risk.get('maximum') or 0) * 100:.1f}%"], ["Policy findings", f"{policy.get('summary', {}).get('CERTAIN_VIOLATION', 0)} certain; {policy.get('summary', {}).get('POSSIBLE_VIOLATION', 0)} possible; {policy.get('summary', {}).get('NOT_EVALUABLE', 0)} not evaluable"], ["AI traffic inference", f"{data.get('application', {}).get('label', 'UNKNOWN')} ({float(data.get('application', {}).get('max_probability') or 0) * 100:.0f}% model confidence)"]], [55 * lib["mm"], 119 * lib["mm"]]))
+    flags = ", ".join(str(flag).replace("_", " ") for flag in cgii.get("flags", [])) or "None"
+    story.append(_table(lib, theme, [["Assessment area", "Result"], ["Assessment scope", f"{cgii.get('status', '—').replace('_', ' ')} — {flags}"], ["Configuration resolution", f"{len(cgii.get('prediction_set', []))} supported candidate(s) of {cgii.get('total_candidates', 0)}"], ["Evidence completeness", f"{float(cgii.get('evidence_completeness') or 0) * 100:.0f}%"], ["Policy-risk range", _risk_range_text(data)], ["Policy findings", f"{policy.get('summary', {}).get('CERTAIN_VIOLATION', 0)} certain; {policy.get('summary', {}).get('POSSIBLE_VIOLATION', 0)} possible; {policy.get('summary', {}).get('NOT_EVALUABLE', 0)} not evaluable"], ["AI traffic inference", f"{data.get('application', {}).get('label', 'UNKNOWN')} ({float(data.get('application', {}).get('max_probability') or 0) * 100:.0f}% model confidence)"]], [55 * lib["mm"], 119 * lib["mm"]]))
     evidence, summary_rows = _evidence_by_property(data), [["Property", "Value", "Evidence"]]
-    for prop, label in [("ike.version", "IKE version"), ("ike.selected_encryption", "IKE encryption"), ("ike.selected_prf", "IKE PRF"), ("ike.initial_ke_group", "DH group"), ("child.mode", "IPsec mode"), ("child.pfs_group", "PFS"), ("child.anti_replay_enabled", "Replay protection")]:
+    for prop, label in _ASSURANCE_PROPERTIES:
         value, status, source = _evidence_value(evidence, prop)
         summary_rows.append([label, _fmt(value), f"{status.replace('_', ' ')} / {source}"])
     story += [_paragraph(lib, styles, "Observed and assured IPsec posture", "VgxH1"), _table(lib, theme, summary_rows, [42 * lib["mm"], 58 * lib["mm"], 74 * lib["mm"]]), _paragraph(lib, styles, "Prioritized recommendations", "VgxH1")]
@@ -219,7 +268,7 @@ def _executive_pdf(data: dict[str, Any], destination: Path) -> None:
     threat_rows = [["Context", "Severity", "Assessment", "Evidence status"]]
     for item in (threats or data.get("threat_matrix", []))[:8]:
         threat_rows.append([item.get("threat_context", "—"), item.get("severity", "—"), item.get("finding", "—").replace("_", " "), item.get("status", "—").replace("_", " ")])
-    story += [_table(lib, theme, threat_rows, [52 * lib["mm"], 22 * lib["mm"], 57 * lib["mm"], 43 * lib["mm"]]), _paragraph(lib, styles, "Assurance boundary", "VgxH1"), _paragraph(lib, styles, "The application classifier infers encrypted-flow traffic categories from safe aggregate flow features. Its confidence does not prove ground truth or in-domain coverage. Configuration and security conclusions are limited to the evidence ledger, the stated policy profile, and the supported candidate catalogue.")]
+    story += [_table(lib, theme, threat_rows, [52 * lib["mm"], 22 * lib["mm"], 57 * lib["mm"], 43 * lib["mm"]])]
     doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
 
 
@@ -238,7 +287,19 @@ def _technical_pdf(data: dict[str, Any], destination: Path) -> None:
     for session in capture.get("ike_sessions", []):
         endpoints = ", ".join(" ↔ ".join(pair) for pair in session.get("endpoints", [])[:1])
         session_rows.append([_short_hash(session.get("initiator_spi")), endpoints or "—", len(session.get("exchanges", [])), session.get("retransmissions", 0)])
-    story += [_paragraph(lib, styles, "IKE session summary", "VgxH2"), _table(lib, theme, session_rows, [38 * lib["mm"], 82 * lib["mm"], 35 * lib["mm"], 35 * lib["mm"]]), _paragraph(lib, styles, "Evidence ledger", "VgxH1")]
+    effective = _evidence_by_property(data)
+    assurance_rows = [["Assessment fact", "Effective value", "Evidence source"]]
+    for prop, label in _ASSURANCE_PROPERTIES:
+        value, status, source = _evidence_value(effective, prop)
+        assurance_rows.append([label, _fmt(value), f"{status.replace('_', ' ')} / {source}"])
+    story += [
+        _paragraph(lib, styles, "IKE session summary", "VgxH2"),
+        _table(lib, theme, session_rows, [38 * lib["mm"], 82 * lib["mm"], 35 * lib["mm"], 35 * lib["mm"]]),
+        _paragraph(lib, styles, "Effective protocol and endpoint assurance", "VgxH1"),
+        _paragraph(lib, styles, "This summary resolves each fact from its latest authorized evidence record. The full chronology remains below for audit."),
+        _table(lib, theme, assurance_rows, [47 * lib["mm"], 60 * lib["mm"], 83 * lib["mm"]]),
+        _paragraph(lib, styles, "Evidence ledger — complete provenance history", "VgxH1"),
+    ]
     ledger = [["Property", "Value", "Status", "Source", "Rationale"]]
     for item in capture.get("evidence", []):
         ledger.append([item.get("property_name", "—"), _pdf_value(item.get("value")), item.get("status", "—").replace("_", " "), item.get("source", "—"), item.get("rationale", "—")])
